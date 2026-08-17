@@ -981,6 +981,40 @@ class SlotLayoutTest {
     fun `缓动前段快于线性`() {
         assertTrue(SlotLayout.easeOutCubic(0.25f) > 0.25f)
     }
+
+    // 下面三条是本任务的关键补充，**不要省略**。
+
+    @Test
+    fun `缓动是三次而非其它阶`() {
+        // 端点、单调、值域、「快于线性」这些不变量筛不出阶数：
+        // 1 - (1 - t)^n 的整个 n >= 2 族都能通过它们，Quad 和 Quart 会全绿。
+        // 「三次」是这个函数的数学定义，不是 Task 9 的可调参数，所以直接钉取值。
+        assertEquals(1f - 0.9f * 0.9f * 0.9f, SlotLayout.easeOutCubic(0.1f), EPS)
+        assertEquals(0.875f, SlotLayout.easeOutCubic(0.5f), EPS)
+        assertEquals(1f - 0.4f * 0.4f * 0.4f, SlotLayout.easeOutCubic(0.6f), EPS)
+        assertEquals(1f - 0.1f * 0.1f * 0.1f, SlotLayout.easeOutCubic(0.9f), EPS)
+    }
+
+    @Test
+    fun `NaN 进度退化为起点而不穿透`() {
+        // coerceIn 挡不住 NaN（NaN 的所有比较都是 false，会被原样返回）。
+        assertEquals(0f, SlotLayout.easeOutCubic(Float.NaN), EPS)
+
+        val a = SlotLayout.poseFor(0)
+        val b = SlotLayout.poseFor(3)
+        assertEquals(a, SlotLayout.lerp(a, b, Float.NaN))
+    }
+
+    @Test
+    fun `无穷大进度被钳制到端点`() {
+        val a = SlotLayout.poseFor(0)
+        val b = SlotLayout.poseFor(3)
+
+        assertEquals(0f, SlotLayout.easeOutCubic(Float.NEGATIVE_INFINITY), EPS)
+        assertEquals(1f, SlotLayout.easeOutCubic(Float.POSITIVE_INFINITY), EPS)
+        assertEquals(a, SlotLayout.lerp(a, b, Float.NEGATIVE_INFINITY))
+        assertEquals(b, SlotLayout.lerp(a, b, Float.POSITIVE_INFINITY))
+    }
 }
 ```
 
@@ -1052,7 +1086,7 @@ object SlotLayout {
      * 端点不精确还会逐轮累积 ulp 偏移，使「当前姿态 == 某槽位姿态」的判断永久失效。
      */
     fun lerp(from: SlotPose, to: SlotPose, t: Float): SlotPose {
-        val k = t.coerceIn(0f, 1f)
+        val k = normalizeProgress(t)
         val inv = 1f - k
         return SlotPose(
             zFactor = from.zFactor * inv + to.zFactor * k,
@@ -1064,10 +1098,26 @@ object SlotLayout {
 
     /** 三次缓出：起步快、收尾稳，卡片推进时观感最自然。 */
     fun easeOutCubic(t: Float): Float {
-        val k = t.coerceIn(0f, 1f)
+        val k = normalizeProgress(t)
         val inv = 1f - k
         return 1f - inv * inv * inv
     }
+
+    /**
+     * [lerp] 与 [easeOutCubic] 唯一的进度入口。
+     *
+     * **单纯的 `coerceIn` 挡不住 NaN**：它内部用 `<` / `>` 比较，而 NaN 与任何数比较都是 false，
+     * 于是被原样返回。不加这层的话 `easeOutCubic(NaN)` 得 NaN、`lerp(a, b, NaN)` 得四字段全 NaN
+     * 的姿态，随后灌进场景变换——实体消失或跑到垃圾位置，且现场离出错点很远。
+     * 触发场景很现实：动画驱动方算 `elapsed / duration`，`duration == 0` 时得 `0f / 0f` 即 NaN。
+     * （±Inf 反而安全，会被正常钳到 1f / 0f。）
+     *
+     * NaN 归 0f 而非 1f，理由是 **fail-visibly**：`duration == 0` 是调用方的 bug，
+     * 归 1f 会让它表现成「正常的瞬时完成」而被静默吸收，归 0f 则表现为一帧可见的回跳。
+     * 代价有上界——`isTransitioning` 的判定使这条路径最多波及一帧。
+     * （注意「0 是恒等元」不构成理由：1f 同样组合自洽。）
+     */
+    private fun normalizeProgress(t: Float): Float = if (t.isNaN()) 0f else t.coerceIn(0f, 1f)
 }
 ```
 
@@ -1077,7 +1127,15 @@ object SlotLayout {
 ./gradlew :app:testDebugUnitTest --tests "tech.illusion.todayinhistory.queue.SlotLayoutTest"
 ```
 
-期望：10 个测试全部 PASS。
+期望：全部 PASS。
+
+**验收标准是变异验证，不是条数。** 至少确认这几种变异各有测试变红：
+`poseFor` 去掉 `coerceIn` 或写成差一上界；`lerp` 的 `t` 不钳制；`easeOutCubic` 写成线性；
+**`easeOutCubic` 降阶成 Quad / 升阶成 Quart**；姿态表某项 scale/alpha 破坏单调性；
+去掉 NaN 防御。若某种变异一条都不红，说明该行为零覆盖，补测试。
+
+同时做**负向对照**：`datePose` 的 scale 属于 Task 9 的合法调优空间，把它调大或调小
+（只要仍可见）都应当**全绿**——若变红，说明测试锁死了不该锁的数值。
 
 - [ ] **Step 5: 提交**
 
