@@ -231,6 +231,30 @@ class HistoryQueueTest {
     }
 
     @Test
+    fun `条目不足且游标非零时槽位环绕但不重影`() {
+        // size < VISIBLE_SLOTS 且 cursor != 0——「多余槽位为空」这条规则真正的用武之地。
+        // 先前 size=3 的用例 cursor 恒为 0，size=8 的用例又填满了全部槽位，两者都没覆盖
+        // 到这个组合。slot 在 0 until size 上取 (cursor + slot).mod(size) 是双射，所以
+        // slot >= size 精确等价于「该槽位会与某个更小槽位撞号」，null 是去重而非兜底。
+        val q = HistoryQueue(entries(1, 2, 3), startIndex = 0)
+
+        q.advance()
+
+        assertEquals(1, q.cursor)
+        assertEquals(2, q.entryAt(0)!!.year)
+        assertEquals(3, q.entryAt(1)!!.year)
+        assertEquals(1, q.entryAt(2)!!.year) // 环绕回开头
+        assertNull(q.entryAt(3)) // 若在此处再环绕，第 2 年就会同时出现在 slot 0 和 slot 3
+        assertNull(q.entryAt(VISIBLE_SLOTS - 1))
+    }
+
+    @Test
+    fun `可见槽位数是六`() {
+        // 1 张焦点卡 + 5 条待读。下游布局直接引用这个常量，改动它等于改产品形态。
+        assertEquals(6, VISIBLE_SLOTS)
+    }
+
+    @Test
     fun `randomStart 产生的起点落在合法区间内`() {
         val list = entries(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
 
@@ -245,23 +269,26 @@ class HistoryQueueTest {
     }
 
     @Test
-    fun `randomStart 覆盖整个下标区间且同种子可复现`() {
+    fun `randomStart 覆盖整个下标区间且起点完全由传入的 Random 决定`() {
         // 只断言「不越界」的话，一个恒返回 0 的实现也能通过。这里要求固定的 200 个种子
         // 恰好覆盖全部下标：既排除常量起点，也排除 nextInt(size - 1)、nextInt(1, size)
         // 这类两端各差一格的写法。
         val list = entries(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
 
-        val observed = (0 until 200).map { seed ->
-            HistoryQueue.randomStart(list, Random(seed)).cursor
-        }
+        // 同一批种子跑两遍，要求整条序列逐位相同。
+        //
+        // 早先这里只比「同一种子连抽两次是否相等」，那是弱断言：一个忽略入参、
+        // 改用全局 Random.Default 的实现有约 1/10 的概率两次抽到同值而放行，
+        // 于是同一份错误代码时红时绿。逐位比整条 200 元素序列后，全局随机源要蒙混
+        // 过关需要连续 200 次巧合（约 1e-200），实际上是稳定红。
+        fun cursorsOfFixedSeeds(): List<Int> =
+            (0 until 200).map { seed -> HistoryQueue.randomStart(list, Random(seed)).cursor }
 
-        assertEquals(list.indices.toSet(), observed.toSet())
+        val firstPass = cursorsOfFixedSeeds()
+        val secondPass = cursorsOfFixedSeeds()
 
-        // 同一种子必须复现，说明起点确实由传入的 Random 决定，而非全局随机源。
-        assertEquals(
-            HistoryQueue.randomStart(list, Random(42)).cursor,
-            HistoryQueue.randomStart(list, Random(42)).cursor,
-        )
+        assertEquals("同一批种子必须复现出同一条起点序列", firstPass, secondPass)
+        assertEquals(list.indices.toSet(), firstPass.toSet())
     }
 
     @Test
