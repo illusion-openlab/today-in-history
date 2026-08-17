@@ -1,0 +1,58 @@
+#usda 1.0
+(
+    customLayerData = {
+        string Copyright = "Copyright 2022 - 2024 PICO. All rights reserved."
+        string RuntimeVersion = "Runtime V0.10.3.0.alpha.7"
+        string Version = "Spatial Editor V0.10.2-alpha.3"
+    }
+    defaultPrim = "Root"
+    doc = "spatial editor 0.1"
+    endTimeCode = 0
+    framesPerSecond = 24
+    metersPerUnit = 1
+    startTimeCode = 0
+    upAxis = "Y"
+)
+
+def Xform "Root"
+{
+    quatf xformOp:orient = (1, 0, 0, 0)
+    float3 xformOp:scale = (1, 1, 1)
+    float3 xformOp:translate = (0, 0, 0)
+    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+
+    def Xform "DirectionalLight"
+    {
+        quatf xformOp:orient = (0.8929899, -0.41944945, 0.14327611, -0.078122795) (
+            customData = {
+                float3 euler = (-46.614, 27.9, -22.216)
+            }
+        )
+        float3 xformOp:scale = (0.99999994, 1, 1)
+        float3 xformOp:translate = (0.213, 0.471, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+
+        def SpatialComponent "DirectionalLightComponent"
+        {
+            bool castsShadowEnabled = 1
+            uniform token info:id = "DirectionalLightComponent"
+            uint64 info:typeId = 2727022354109603371
+            float intensity = 2000
+            float shadowDepthBias = 0
+        }
+    }
+
+    def "box" (
+        prepend references = @../Assets/box.usdz@
+    )
+    {
+        quatf xformOp:orient = (0.70710677, 0.70710677, 0, 0) (
+            customData = {
+                float3 euler = (90, 0, 0)
+            }
+        )
+        float3 xformOp:scale = (1, 0.99999994, 1)
+        float3 xformOp:translate = (0, 0, 0)
+    }
+}
+

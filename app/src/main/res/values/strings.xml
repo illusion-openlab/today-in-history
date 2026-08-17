@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">VolumetricWindowContainer</string>
+    <string name="homepage_title">Volumetric WindowContainer</string>
+    <string name="homepage_body">The Volumetric WindowContainer is a balanced spatial container designed for medium-scale 3D content. It is ideal for: interactable 3D objects (gadgets, wearables, or tools), medium-detail models, scenarios requiring moderate spatial depth and object exploration.</string>
+</resources>
