@@ -815,6 +815,19 @@ class HistoryQueue(private val entries: List<HistoryEntry>, startIndex: Int) {
 
 `Int.mod(Int)` 是 Kotlin 标准库函数，对负数返回非负结果——这正是环绕需要的语义（`(-1).mod(8) == 7`），不要用 `%`。
 
+**但上面这段警告，本任务的 12 条测试一条也验证不到。** 它们的 `startIndex` 只用 0/3/6、`step` 只用 1/3/7，
+全是非负数，而 `a % n` 与 `a.mod(n)` 在非负输入上恒等——一个用 `%` 写的错误实现能让这 12 条全绿。
+
+实测变异验证：把实现的三处 `.mod` 换成 `%`，只有下列负数用例会红，原 12 条一条不红。
+所以**必须**补上这三类用例：
+
+- 负步长回退并环绕到末尾（`advance(step = -1)` 从 cursor 0 应到 size-1）
+- 负步长绝对值大于总数时游标仍非负（如 `advance(step = -13)` 在 size 8 上）
+- 负起点被归一化成非负游标（`HistoryQueue(entries, startIndex = -3)`）
+
+另外 brief 原文的 `randomStart 产生的起点落在合法区间内` 用了 Kotlin 的 `assert(...)`，
+它受 JVM `-ea` 开关控制，关掉即恒真——改用 `assertTrue`。
+
 - [ ] **Step 4: 运行测试确认通过**
 
 ```bash
