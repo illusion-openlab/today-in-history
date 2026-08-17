@@ -72,3 +72,12 @@ configurations.all {
         exclude("androidx.compose.foundation", "foundation")
     }
 }
+
+// RealAssetIntegrityTest 通过 java.io.File 直接读 src/main/assets，绕过了 Gradle 的
+// 输入追踪。不声明这个输入的话，只改资产而不动代码时 Gradle 会判定单测任务 UP-TO-DATE
+// 直接跳过——而那恰恰是这条测试唯一该起作用的场景（Task 1 重新生成资产之后）。
+tasks.withType<Test>().configureEach {
+    inputs.dir(layout.projectDirectory.dir("src/main/assets"))
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+        .withPropertyName("historyAssets")
+}
