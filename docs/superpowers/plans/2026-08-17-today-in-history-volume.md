@@ -735,13 +735,17 @@ class HistoryQueueTest {
     }
 
     @Test
-    fun `randomStart 产生的起点落在合法区间内`() {
+    fun `randomStart 覆盖整个下标区间且起点完全由传入的 Random 决定`() {
         val list = entries(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+        fun cursorsOfFixedSeeds() =
+            (0 until 200).map { seed -> HistoryQueue.randomStart(list, Random(seed)).cursor }
 
-        repeat(50) { seed ->
-            val q = HistoryQueue.randomStart(list, Random(seed))
-            assert(q.cursor in list.indices) { "游标 ${q.cursor} 越界" }
-        }
+        val first = cursorsOfFixedSeeds()
+
+        // 覆盖集恰好相等：一次排除常量起点、nextInt(size-1)、nextInt(1,size) 三类错误
+        assertEquals(list.indices.toSet(), first.toSet())
+        // 逐位比较两趟：若实现忽略传入的 random 改用全局源，200 位全撞的概率约 1e-200
+        assertEquals("起点必须完全由传入的 Random 决定", first, cursorsOfFixedSeeds())
     }
 
     @Test
@@ -834,7 +838,12 @@ class HistoryQueue(private val entries: List<HistoryEntry>, startIndex: Int) {
 ./gradlew :app:testDebugUnitTest --tests "tech.illusion.todayinhistory.queue.HistoryQueueTest"
 ```
 
-期望：12 个测试全部 PASS。
+期望：全部 PASS。
+
+**注意测试条数**：上面列出的是基础用例，加上本节要求补的三类负数用例（`mod` vs `%`）、
+`size < VISIBLE_SLOTS` 且 `cursor != 0` 的防重影用例、以及 `assertEquals(6, VISIBLE_SLOTS)`，
+实际条数会多于列出的数量。**不要把「条数对上」当作验收标准**——验收标准是变异验证：
+把实现的 `.mod` 换成 `%` 必须有测试变红，把 `randomStart` 换成忽略入参的全局随机源也必须**稳定**变红。
 
 - [ ] **Step 5: 提交**
 
