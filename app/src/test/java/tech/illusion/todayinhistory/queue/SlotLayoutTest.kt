@@ -191,14 +191,21 @@ class SlotLayoutTest {
         assertEquals(1f, SlotLayout.datePose.alpha, EPS)
     }
 
-    /** brief 的范围检查只遍历了槽位，datePose 飞出容器或缩成 0 都不会红。 */
+    /**
+     * brief 的范围检查只遍历了槽位，datePose 飞出容器或缩成 0 都不会红。
+     *
+     * scale **刻意不设上界**：日期牌和卡片是不同元件，既没有语义要求它与焦点卡等大，
+     * 也没有语义要求它不能更大——Task 9 调成 1.15f 是合法调优，不该在这里变红。
+     * 只要求为正（不能隐形）。alpha 的上界 1f 则是真不变量，不透明度没法超过全不透明。
+     *
+     * 对照：槽位侧的 `scale in 0f..1f` 是真不变量（不该有卡片比焦点卡大），不要照这里放宽。
+     */
     @Test
     fun `日期牌的因子也落在容器范围内且可见`() {
         val date = SlotLayout.datePose
 
         assertTrue("z 越界: ${date.zFactor}", date.zFactor in -0.5f..0.5f)
         assertTrue("y 越界: ${date.yFactor}", date.yFactor in -0.5f..0.5f)
-        assertTrue("scale 越界: ${date.scale}", date.scale in 0f..1f)
         assertTrue("alpha 越界: ${date.alpha}", date.alpha in 0f..1f)
         assertTrue("日期牌的 scale 必须为正", date.scale > 0f)
     }
