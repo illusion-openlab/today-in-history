@@ -17,8 +17,9 @@
 - Spatial SDK 版本由 `libs.versions.toml` 的 `spatialBom = "6.0.0"` 决定，**不得升级**
 - **禁止 Material / Material3**：项目中不得出现 `androidx.compose.material`、`androidx.compose.material3`、`MaterialTheme`。所有 2D UI 使用 SpatialUI（`com.pico.spatial.ui.*`）并包裹在 `PicoTheme` 中
 - `app/build.gradle.kts` 已 `exclude` 了 `androidx.compose.ui:ui`、`ui-graphics`、`ui-text`、`androidx.compose.foundation:foundation`——这些由 Spatial SDK 提供，**不要重新引入**
-- **不得修改**：`AndroidManifest.xml`、`Main.kt`、`platform/SpatialApplication.kt`、`platform/LaunchActivity.kt`、`settings.gradle.kts`、`gradle/libs.versions.toml`
+- **不得修改**：`AndroidManifest.xml`、`Main.kt`、`platform/SpatialApplication.kt`、`platform/LaunchActivity.kt`、**仓库根的 `/build.gradle.kts`**、`settings.gradle.kts`、`gradle/libs.versions.toml`
 - `app/build.gradle.kts` **原则上禁改**，唯一例外：把 `src/main/assets` 声明为单元测试任务的输入。
+  注意这条例外**只覆盖 `app/build.gradle.kts`**，不覆盖仓库根的 `/build.gradle.kts`（后者始终禁改）。
   该约束的本意是防止靠改依赖/exclude 去凑编译通过；声明任务输入与那个意图正交。
   实测证据：不声明输入时，污染资产后 `:app:testDebugUnitTest` 会 `UP-TO-DATE` 且 `BUILD SUCCESSFUL`，
   真实资产回归测试静默不运行 —— 恰好在它最该起作用的场景（重新生成资产后本地跑测试）失效。
