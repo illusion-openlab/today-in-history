@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -50,27 +49,36 @@ private val CardWidth = 560.dp
 private val CardPaddingHorizontal = 36.dp
 
 /**
- * 正文最大行数，与 [FocusCardBodyMaxHeight] 对应（360dp ÷ 24dp 行高 = 15 行）。
+ * 正文最大行数 —— 卡片高度的**唯一**兜底。
  *
- * 这不是给真实数据用的 —— 全库没有任何一条会撞到它（见下）。它只是病态兜底：
- * 将来换数据源真出现超长条目时，用省略号收尾而不是把卡片撑成怪物。
+ * 取 15 行的依据是全库实测：正文可用宽度 488dp（见 [CardWidth]），
+ * 16sp 中文方块字 ≈ 16dp/字，故每行约 30.5 字，15 行容量约 458 字。
+ * 54018 条里最长 402 字（`5-14.json`，1989 年）、第二长 267 字，
+ * 超过 300 字的仅此 1 条（0.0019%）。458 > 402，
+ * 所以**全库一条都不会被截断**，上限却仍然存在。
+ *
+ * ### 为什么不再叠加一道 dp 高度上限
+ *
+ * 早期版本同时挂了 `heightIn(max = 360.dp)`（= 15 × 24dp 行高）。它被删掉了，
+ * 因为**两道闸门叠加时，唯一能生效的失败模式恰好是最差的那个**：
+ *
+ * - `maxLines` 是 **sp 相对**的，随系统字号一起缩放，触发时**保证出省略号**
+ *   （省略号是 paragraph 级特性，只由 `maxLines` 触发）；
+ * - `heightIn` 是 **dp 绝对**的，不随字号缩放，字号一放大它必然先咬到，
+ *   而高度约束只会把段落**硬裁**掉，**不会出省略号**。
+ *
+ * 而字号放大时正文高度按 s² 增长（行高变高的同时每行字数变少）：fontScale 1.07 时
+ * 那条 402 字记录就要 15 行 = 385dp > 360dp 开始被裁；1.15 时只剩约 13 行可见、
+ * 末行半截，省略号落在第 15 行、根本不在可视区；1.30 时丢失过半正文。
+ * 也就是说触发条件不是「换数据源」这种远期假设，而是**当前仓库里那条记录 +
+ * 一个常见的系统字号档位**。
+ *
+ * 去掉 dp 闸门的代价：放大字体时焦点卡可长到约 482dp（正文约 15 × 24dp × 1.3）。
+ * 这远轻于正文被无声切掉一半。
+ *
+ * 改数据源或改 [CardWidth] 后请重新跑长度统计再调这个值。
  */
 private const val MaxBodyLines = 15
-
-/**
- * 正文高度上限 360dp。
- *
- * 推导：正文可用宽度 488dp（见 [CardWidth]），16sp 中文方块字 ≈ 16dp/字，
- * 故每行约 30.5 字；`bodyLargeMultiline` 行高 24sp。
- * 15 行 × 24dp = **360dp**，容量约 458 字。
- *
- * 依据是全库实测而非拍脑袋：54018 条里最长 402 字（`5-14.json`，1989 年），
- * 第二长 267 字，超过 300 字的仅此 1 条（0.0019%）。
- * 458 > 402，所以**全库 54018 条一条都不会被截断**，上限却仍然存在。
- *
- * 改数据源后请重新跑一遍长度统计再调这个值。
- */
-private val FocusCardBodyMaxHeight = 360.dp
 
 /** 类型标签的 string 资源 id，与 `values/strings.xml` 里的 `kind_*` 一一对应。 */
 fun labelOf(kind: Kind): Int =
@@ -103,7 +111,7 @@ fun labelOf(kind: Kind): Int =
  * 第二长 267 字本来就装得下。为 0.0019% 的记录给 100% 的卡片引入手势冲突不划算。
  *
  * 现在改为：上限放宽到能**完整装下全库最长的那条**，滚动去掉，点击语义保持简单。
- * 上限的算法见 [FocusCardBodyMaxHeight]；[MaxBodyLines] + 省略号只作病态兜底。
+ * 上限改由 [MaxBodyLines] + 省略号单独承担，推导与取舍见该常量的 KDoc。
  *
  * ### alpha 为什么是参数而不是内部计算
  *
@@ -167,7 +175,6 @@ fun FocusCard(entry: HistoryEntry?, alpha: Float, onClick: () -> Unit) {
             )
 
             Text(
-                modifier = Modifier.heightIn(max = FocusCardBodyMaxHeight),
                 text = entry.text,
                 // Multiline 变体行高 24sp（bodyLarge 是 20sp），同样 16sp 字号下
                 // 多行中文不会挤在一起。正文本来就是段落，用段落的那个 token。

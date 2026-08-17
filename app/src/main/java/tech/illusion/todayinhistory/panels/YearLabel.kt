@@ -27,9 +27,6 @@ import kotlin.math.abs
  * 取绝对值走 [Long]：`abs(Int.MIN_VALUE)` 在补码下会溢出回 `Int.MIN_VALUE` 自身，
  * 用 Int 取绝对值会渲染出「公元前 -2147483648 年」这种带负号的畸形文本。
  *
- * 取绝对值走 [Long]：`abs(Int.MIN_VALUE)` 在补码下会溢出回 `Int.MIN_VALUE` 自身，
- * 用 Int 取绝对值会渲染出「公元前 -2147483648 年」这种带负号的畸形文本。
- *
  * 这里刻意**不走 string 资源**：格式化是纯逻辑，不依赖 Android framework，
  * 因此能在 JVM 单测里直接验证（见 `YearLabelTest`）。类型标签那类需要本地化的
  * 文案才走 [labelOf] + `stringResource`。
