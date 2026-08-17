@@ -230,6 +230,17 @@ class HistoryQueueSystem : System() {
     /** [logMissingTransform] 的一次性开关，避免每帧刷屏。 */
     private var missingTransformLogged = false
 
+    /**
+     * 上一次记录过的查询命中数，用于 [logQueryCounts] 的变更检测。`-1` 表示还没记过。
+     *
+     * 存在的理由：`queryEntity` 能否命中 `SpatialView` 经 `attachments` 挂上的实体，
+     * 是整条链路里唯一**失败时没有任何报错**的环节——查不到就是每帧遍历一个空列表，
+     * 所有面板停在原点相互重叠，与「System 没注册」「组件没挂上」症状完全相同。
+     * 这两个计数把三者区分开：0/0 是查不到，1/6 是正常。
+     */
+    private var loggedCardCount = -1
+    private var loggedDateCount = -1
+
     // EntityQueryCondition 只持有 Function1 + 两个 Set + 一个 boolean，全是 final 字段，
     // 与任何 Scene 实例无关（已用 javap 核实），所以可以安全地提成字段而不必每帧新建。
     private val cardCondition = EntityQueryCondition.hasComponent(HistoryCardComponent::class.java)
@@ -376,7 +387,11 @@ class HistoryQueueSystem : System() {
         val bounds = QueueHost.boundsMeters
         val scene = context.scene
 
-        scene.queryEntity(cardCondition).forEach { entity ->
+        val cards = scene.queryEntity(cardCondition)
+        val dates = scene.queryEntity(dateCondition)
+        logQueryCounts(cards.size, dates.size)
+
+        cards.forEach { entity ->
             val card = entity.components[HistoryCardComponent::class.java] ?: return@forEach
             val transform = entity.components[TransformComponent::class.java]
             if (transform == null) {
@@ -388,7 +403,7 @@ class HistoryQueueSystem : System() {
 
         // 日期牌姿态恒定，但仍然每帧写：boundsMeters 会随容器缩放变化，而 System 侧
         // 收不到任何变更通知。一个实体的写入开销可以忽略，换来「缩放后自动跟随」。
-        scene.queryEntity(dateCondition).forEach { entity ->
+        dates.forEach { entity ->
             val transform = entity.components[TransformComponent::class.java]
             if (transform == null) {
                 logMissingTransform("日期牌")
@@ -396,6 +411,20 @@ class HistoryQueueSystem : System() {
             }
             applyPose(transform, SlotLayout.datePose, bounds)
         }
+    }
+
+    /**
+     * 命中数变化时记一条。**只在变化时记**，所以稳态下一条都不打，不是每帧刷屏。
+     *
+     * 期望序列是 `0/0`（实体还没挂上的头几帧）→ `6/1`。若始终停在 `0/0`，
+     * 说明 `queryEntity` 查不到 attachment 实体，这时**不要**去调姿态表——
+     * 姿态根本没被写进去过。
+     */
+    private fun logQueryCounts(cardCount: Int, dateCount: Int) {
+        if (cardCount == loggedCardCount && dateCount == loggedDateCount) return
+        loggedCardCount = cardCount
+        loggedDateCount = dateCount
+        Log.i(LOG_TAG, "查询命中：卡片=$cardCount，日期牌=$dateCount")
     }
 
     private fun applyPose(transform: TransformComponent, pose: SlotPose, bounds: Vector3) {
@@ -429,6 +458,9 @@ class HistoryQueueSystem : System() {
         lastPublished = null
         // 与字段初值一致：重新挂上时第一帧就检查，不白等一个节流窗口。
         sinceDayCheck = DAY_CHECK_INTERVAL_SECONDS
+        // 重新挂上时把命中数重新记一次，否则新容器的接线结果不会留下任何痕迹。
+        loggedCardCount = -1
+        loggedDateCount = -1
         clearInFlight()
     }
 }
