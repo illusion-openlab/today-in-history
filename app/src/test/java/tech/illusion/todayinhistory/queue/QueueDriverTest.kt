@@ -315,6 +315,9 @@ class QueueDriverTest {
 
         assertEquals(3, d.snapshot.slots.count { it.entry != null })
         assertEquals(3, d.snapshot.slots.count { it.entry == null })
+        // 只数个数分不清「空槽补在前面」还是「补在后面」，这里钉死位置
+        assertTrue("前 3 槽必须有内容", d.snapshot.slots.subList(0, 3).all { it.entry != null })
+        assertTrue("后 3 槽必须为空", d.snapshot.slots.subList(3, 6).all { it.entry == null })
     }
 
     @Test
@@ -338,21 +341,39 @@ class QueueDriverTest {
     }
 
     /**
-     * `2026-08-17 -> 2027-08-17` 只有年份变了。这条专门堵住「只比 dayOfMonth」、
-     * 「只比 month」、「比 dayOfYear」、「拿 clock 去比 snapshot.month/day」这几种
-     * 写法——它们在 `跨午夜后 dayChanged 为真` 里全都能蒙混过关。
+     * 跨午夜的竞态：23:59:59.9 发起加载 8/17 的数据，00:00:00.1 才回调 `reset`。
+     *
+     * 若基准取自 `reset` 时刻的 `clock()`，基准会变成 8/18 而快照内容是 8/17，
+     * `dayChanged()` 返回 false，接下来约 24 小时都不会再重载——日期牌和内容
+     * 双双停在昨天。基准必须取自**快照的月日**，也就是「我实际装的是哪一天」。
      */
     @Test
-    fun `跨年但月日相同也算跨天`() {
+    fun `快照日期与系统日期不一致时立刻要求重载`() {
+        val (d, _) = driver(today = LocalDate.of(2026, 8, 18))
+
+        d.reset(entries(1, 2, 3, 4, 5, 6, 7, 8), 8, 17)
+
+        assertTrue("快照停在 8/17 而系统已是 8/18，必须重载", d.dayChanged())
+    }
+
+    /**
+     * 「历史上的今天」按 `(月, 日)` 取数，年份不参与。2027-08-17 的内容与
+     * 2026-08-17 完全相同，因此**不该**触发重载。
+     *
+     * 这条同时钉死「只比 month」「只比 dayOfMonth」以外的另一个方向：
+     * 拿完整 `LocalDate` 去比会在这里误报重载。
+     */
+    @Test
+    fun `跨年但月日相同不算跨天`() {
         val (d, now) = driver(today = LocalDate.of(2026, 8, 17))
         d.reset(entries(1, 2, 3, 4, 5, 6, 7, 8), 8, 17)
 
         now[0] = LocalDate.of(2027, 8, 17)
 
-        assertTrue(d.dayChanged())
+        assertFalse("月日没变，内容仍然有效，不该重载", d.dayChanged())
     }
 
-    /** 跨月但日号相同同样算跨天。 */
+    /** 跨月但日号相同算跨天——堵住「只比 dayOfMonth」。 */
     @Test
     fun `跨月但日号相同也算跨天`() {
         val (d, now) = driver(today = LocalDate.of(2026, 8, 17))
@@ -363,9 +384,9 @@ class QueueDriverTest {
         assertTrue(d.dayChanged())
     }
 
-    /** 基准日期在每次 [QueueDriver.reset] 时重新捕获，而不是只在构造时取一次。 */
+    /** 重载到新的一天之后，[QueueDriver.dayChanged] 应立刻复位。 */
     @Test
-    fun `reset 重新捕获日期基准`() {
+    fun `重载到新的一天后 dayChanged 复位`() {
         val (d, now) = driver(today = LocalDate.of(2026, 8, 17))
         d.reset(entries(1, 2, 3, 4, 5, 6, 7, 8), 8, 17)
 
@@ -375,6 +396,14 @@ class QueueDriverTest {
         d.reset(entries(1, 2, 3, 4, 5, 6, 7, 8), 8, 18)
 
         assertFalse("换日重载之后基准应跟上", d.dayChanged())
+    }
+
+    /** 首次 [QueueDriver.reset] 之前快照是哨兵日期，必须表现为「需要加载」。 */
+    @Test
+    fun `首次 reset 之前 dayChanged 为真`() {
+        val (d, _) = driver()
+
+        assertTrue(d.dayChanged())
     }
 
     @Test
@@ -416,10 +445,146 @@ class QueueDriverTest {
         assertEquals(VISIBLE_SLOTS, d.snapshot.slots.size)
         assertTrue(d.snapshot.slots.all { it.entry == null })
         assertEquals(SlotLayout.poseFor(0), d.poseOf(0))
+        // 哨兵日期必须是明显非法值，不能是会被渲染成「1月1日」的假日期
+        assertEquals(0, d.snapshot.month)
+        assertEquals(0, d.snapshot.day)
     }
 
+    /**
+     * **单帧 NaN 会让自动推进永久失效**，这是本驱动器最危险的一条路径。
+     *
+     * `idleSeconds` 一旦被 `+= NaN` 污染就没有任何自愈路径：`NaN >= 300f` 为 false
+     * 所以永远不再触发自动推进，而只有 `reset()` 和用户点击的 `requestAdvance()`
+     * 才会把它清零。对一个「打开就放着自己翻」的摆件，等于核心功能静默死掉，
+     * 最长要熬到下一次跨午夜重载。
+     *
+     * 注意 `secondsUntilAutoAdvance()` 也救不了：`coerceAtLeast` 是
+     * `if (this < min) min else this`，而 `NaN < 0f` 为 false，NaN 原样透出。
+     */
     @Test
-    fun `不同随机种子给出不同起点`() {
+    fun `单帧 NaN 的 deltaSeconds 不会让自动推进永久失效`() {
+        val (d, _) = driver()
+        d.reset(entries(1, 2, 3, 4, 5, 6, 7, 8), 8, 17)
+        val start = d.snapshot.slots[0].entry!!.year
+        val next = d.snapshot.slots[1].entry!!.year
+
+        d.tick(Float.NaN)
+
+        assertEquals("NaN 帧不该污染空闲计时", AUTO_ADVANCE_SECONDS, d.secondsUntilAutoAdvance(), 0.01f)
+
+        d.tick(AUTO_ADVANCE_SECONDS)
+
+        assertNotEquals("NaN 之后自动推进仍须工作", start, d.snapshot.slots[0].entry!!.year)
+        assertEquals(next, d.snapshot.slots[0].entry!!.year)
+    }
+
+    /** 无穷大与负数 deltaSeconds 同样是非法输入，一律忽略。 */
+    @Test
+    fun `无穷大与负数 deltaSeconds 被忽略`() {
+        for (bad in listOf(Float.NEGATIVE_INFINITY, Float.POSITIVE_INFINITY, -5f)) {
+            val (d, _) = driver()
+            d.reset(entries(1, 2, 3, 4, 5, 6, 7, 8), 8, 17)
+            val start = d.snapshot.slots[0].entry!!.year
+
+            d.tick(bad)
+
+            assertEquals("delta=$bad", AUTO_ADVANCE_SECONDS, d.secondsUntilAutoAdvance(), 0.01f)
+            assertEquals("delta=$bad 不该推进", start, d.snapshot.slots[0].entry!!.year)
+            assertFalse("delta=$bad", d.isTransitioning)
+
+            // 非法帧之后仍能正常推进
+            d.tick(AUTO_ADVANCE_SECONDS)
+            assertNotEquals("delta=$bad 之后应恢复正常", start, d.snapshot.slots[0].entry!!.year)
+        }
+    }
+
+    /**
+     * 过渡分支同样要挡住 NaN。
+     *
+     * 注意这条与 `单帧 NaN...` 覆盖的是**两个不同的字段**：这里是 `transitionSeconds`，
+     * 那里是 `idleSeconds`。两者的失效方式也不同——`transitionSeconds` 变 NaN 会让
+     * `isTransitioning`（`NaN >= 0f` 为 false）直接掉出过渡态、动画被吃掉；
+     * `idleSeconds` 变 NaN 则是永久卡死。别拿一条的结论去推另一条。
+     */
+    @Test
+    fun `过渡期间的 NaN deltaSeconds 不会打断过渡`() {
+        val (d, _) = driver()
+        d.reset(entries(1, 2, 3, 4, 5, 6, 7, 8), 8, 17)
+
+        d.requestAdvance(1)
+        d.tick(Float.NaN)
+
+        assertTrue("NaN 帧不该把过渡吃掉", d.isTransitioning)
+        assertEquals("进度不该被污染", SlotLayout.poseFor(1), d.poseOf(0))
+
+        d.tick(TRANSITION_SECONDS)
+
+        assertFalse(d.isTransitioning)
+        assertEquals(SlotLayout.poseFor(0), d.poseOf(0))
+    }
+
+    /**
+     * 6 槽模型的**端点退化**，Task 6 必须知道：`poseFor` 把越界槽位钳到 0..5，
+     * 于是 step=1 时 `poseOf(5)` 的起点 `poseFor(6)` 被钳成 `poseFor(5)`，
+     * 与目标相同——尾部新进的卡**原地不动**，没有滑入动画。
+     */
+    @Test
+    fun `尾部槽位因钳制而原地不动`() {
+        val (d, _) = driver()
+        d.reset(entries(1, 2, 3, 4, 5, 6, 7, 8), 8, 17)
+
+        d.requestAdvance(1)
+        assertEquals(SlotLayout.poseFor(5), d.poseOf(5))
+
+        d.tick(TRANSITION_SECONDS / 2f)
+        assertEquals("过渡中途同样纹丝不动", SlotLayout.poseFor(5).zFactor, d.poseOf(5).zFactor, EPS)
+
+        d.tick(TRANSITION_SECONDS)
+        assertEquals(SlotLayout.poseFor(5), d.poseOf(5))
+    }
+
+    /** step=3 时尾部三张卡全部从 `poseFor(5)` 起步——退化范围随 step 变大。 */
+    @Test
+    fun `多步推进时尾部多张卡挤在同一起点`() {
+        val (d, _) = driver()
+        d.reset(entries(1, 2, 3, 4, 5, 6, 7, 8), 8, 17)
+
+        d.requestAdvance(3)
+
+        assertEquals(SlotLayout.poseFor(5), d.poseOf(3))
+        assertEquals(SlotLayout.poseFor(5), d.poseOf(4))
+        assertEquals(SlotLayout.poseFor(5), d.poseOf(5))
+    }
+
+    /** 越界槽位号在过渡内外都被钳制，不抛异常。 */
+    @Test
+    fun `越界槽位号被钳制`() {
+        val (d, _) = driver()
+        d.reset(entries(1, 2, 3, 4, 5, 6, 7, 8), 8, 17)
+
+        assertEquals(SlotLayout.poseFor(VISIBLE_SLOTS - 1), d.poseOf(VISIBLE_SLOTS))
+        assertEquals(SlotLayout.poseFor(0), d.poseOf(-1))
+
+        d.requestAdvance(1)
+
+        assertEquals(SlotLayout.poseFor(VISIBLE_SLOTS - 1), d.poseOf(VISIBLE_SLOTS))
+        assertEquals(SlotLayout.poseFor(0), d.poseOf(-1))
+    }
+
+    /**
+     * 起点必须**逐位**取决于注入的 [Random]，不能只断言「结果有多样性」。
+     *
+     * 「20 个种子产生多于 1 个不同起点」是个假断言：把
+     * `randomStart(entries, random)` 换成 `randomStart(entries, Random.Default)`
+     * ——也就是完全忽略注入的 random——100 条数据抽 20 次几乎必然出现多个不同值，
+     * 断言照样绿。`HistoryQueueTest` 也兜不住：那边测的是 `randomStart` 自身，
+     * 这里要测的是 driver **有没有把 random 正确传下去**。
+     *
+     * 同一个坑在 Task 3 已经踩过一次（见 HistoryQueueTest 对 randomStart 复现性的注释），
+     * 这里逐位钉死，不再依赖多样性。
+     */
+    @Test
+    fun `起点逐位取决于注入的 random`() {
         val list = entries(*IntArray(100) { it + 1 })
         val starts =
             (0 until 20).map { seed ->
@@ -428,6 +593,11 @@ class QueueDriverTest {
                 d.snapshot.slots[0].entry!!.year
             }
 
+        val expected =
+            (0 until 20).map { seed -> HistoryQueue.randomStart(list, Random(seed)).entryAt(0)!!.year }
+        assertEquals(expected, starts)
+
+        // 附带确认这组期望值本身不是常量（否则上面的相等断言会退化成同义反复）
         assertTrue("20 个种子应产生多于 1 个不同起点", starts.toSet().size > 1)
     }
 
