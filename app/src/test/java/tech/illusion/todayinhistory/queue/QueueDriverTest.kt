@@ -524,6 +524,32 @@ class QueueDriverTest {
     }
 
     /**
+     * 过渡分支对四种非法 delta 一视同仁。
+     *
+     * 这条与 `无穷大与负数 deltaSeconds 被忽略` 是**对称**的一对：那条覆盖空闲分支，
+     * 这条覆盖过渡分支。之所以要补齐对称性——`idleSeconds` 那个永久失效的洞，
+     * 起因正是当初只探测了过渡分支就以为全都安全。
+     */
+    @Test
+    fun `过渡期间的各种非法 deltaSeconds 都不打断过渡`() {
+        for (bad in listOf(Float.NaN, Float.NEGATIVE_INFINITY, Float.POSITIVE_INFINITY, -5f)) {
+            val (d, _) = driver()
+            d.reset(entries(1, 2, 3, 4, 5, 6, 7, 8), 8, 17)
+
+            d.requestAdvance(1)
+            d.tick(bad)
+
+            assertTrue("delta=$bad 不该把过渡吃掉", d.isTransitioning)
+            assertEquals("delta=$bad 进度不该被污染", SlotLayout.poseFor(1), d.poseOf(0))
+
+            // 非法帧之后过渡仍能正常走完
+            d.tick(TRANSITION_SECONDS)
+            assertFalse("delta=$bad", d.isTransitioning)
+            assertEquals("delta=$bad", SlotLayout.poseFor(0), d.poseOf(0))
+        }
+    }
+
+    /**
      * 6 槽模型的**端点退化**，Task 6 必须知道：`poseFor` 把越界槽位钳到 0..5，
      * 于是 step=1 时 `poseOf(5)` 的起点 `poseFor(6)` 被钳成 `poseFor(5)`，
      * 与目标相同——尾部新进的卡**原地不动**，没有滑入动画。

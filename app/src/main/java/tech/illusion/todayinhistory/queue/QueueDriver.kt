@@ -45,15 +45,34 @@ class QueueDriver(private val clock: () -> LocalDate, private val random: Random
      * 每帧调用。[deltaSeconds] 来自 SceneUpdateContext.deltaTime。
      *
      * 非有限或负的 [deltaSeconds] 一律**整帧丢弃**，与 `SlotLayout.normalizeProgress`
-     * 的防线同构。这不是洁癖：`idleSeconds` 一旦被 `+= NaN` 污染就**没有任何自愈路径**
-     * ——`NaN >= AUTO_ADVANCE_SECONDS` 恒为 false，自动推进从此静默死掉，只有 [reset]
-     * 或用户手动点击才能救回来；对一个「打开就放着自己翻」的摆件，那等于熬到下一次
-     * 跨午夜重载（最长约 24 小时）都不动。`secondsUntilAutoAdvance` 也挡不住，
-     * `coerceAtLeast` 内部是 `if (this < min) min else this`，`NaN < 0f` 为 false，
-     * NaN 会原样透出。±Inf 同理（`Inf - Inf` 得 NaN）。
+     * 的防线同构。四种非法值的后果各不相同，**别当成同一件事**（下列行为均已实测）：
      *
-     * `transitionSeconds` 的失效方式与之不同：它变 NaN 会让 [isTransitioning]
-     * （`NaN >= 0f` 为 false）直接掉出过渡态，动画被吃掉但可自愈。两条路径别混为一谈。
+     * | 值 | 落到 `idleSeconds` 之后 | 能否自愈 |
+     * |---|---|---|
+     * | `NaN` | `NaN >= 300f` 恒为 false，自动推进静默死掉 | **不能** |
+     * | `-Inf` | `-Inf + 有限值` 恒为 `-Inf`，同上 | **不能** |
+     * | `+Inf` | `Inf >= 300f` 为真 → 立刻**误推进一条**，随后 `requestAdvance` 把计时清零 | 能，但已经错跳了一条 |
+     * | 有限负数 | 计时倒退，自动推进被推迟 `|delta|` 秒 | 能 |
+     *
+     * 前两者是真正致命的：只有 [reset] 或用户手动点击才能救回来，对一个「打开就放着
+     * 自己翻」的摆件，等于熬到下一次跨午夜重载（最长约 24 小时）都不动。
+     * [secondsUntilAutoAdvance] 也挡不住——`coerceAtLeast` 内部是
+     * `if (this < min) min else this`，而 `NaN < 0f` 为 false（NaN 原样透出）、
+     * `300f - (-Inf)` 得 `+Inf` 且 `Inf < 0f` 为 false（`+Inf` 原样透出）。
+     *
+     * 注意 `Inf - Inf` 得 NaN 这件事**在本路径上不会发生**：[secondsUntilAutoAdvance]
+     * 算的是 `300f - Inf = -Inf`（再被钳成 `0f`）；要凑出 NaN 得连着两帧异号的无穷大。
+     *
+     * **`0f` 必须放过，不要把条件收紧成 `<= 0f`。** 丢弃 `0f` 既无实际效果（卫兵是
+     * `return`，与 `+= 0f` 的唯一差别是不执行过渡终止判定，状态完全相同），又会拆掉
+     * `SlotLayout.normalizeProgress` KDoc 里「NaN 归 0f 最多波及一帧」那个上界——
+     * 那个上界正是靠终止判定 `>=` 在 `delta == 0` 的帧也成立撑住的。
+     * （这条约束没有测试能钉死：`TRANSITION_SECONDS > 0` 时丢弃 `0f` 是不可观测的，
+     * 差别只在 `TRANSITION_SECONDS == 0` 时才显形。所以靠这段注释守着。）
+     *
+     * `transitionSeconds` 的失效方式与 `idleSeconds` **不同**：它变 NaN 会让
+     * [isTransitioning]（`NaN >= 0f` 为 false）直接掉出过渡态，动画被吃掉但可自愈。
+     * 两条路径别混为一谈，也别拿一条的结论去推另一条。
      */
     fun tick(deltaSeconds: Float) {
         if (!deltaSeconds.isFinite() || deltaSeconds < 0f) return
@@ -131,11 +150,26 @@ class QueueDriver(private val clock: () -> LocalDate, private val random: Random
      * 接下来约 24 小时都不再重载，日期牌与内容双双停在昨天。
      *
      * 只比月日、不比年：本应用按 `(月, 日)` 取数，2027-08-17 与 2026-08-17 内容相同，
-     * 不需要重载。（也因此避开了年份边界——用 `LocalDate.of(clock().year, month, day)`
-     * 去凑一个基准日期，在跨年那一刻会算出错误的年份。）
+     * 不需要重载。这也避开了另一个坑——若改成拿
+     * `LocalDate.of(clock().year, snapshot.month, snapshot.day)` 去凑一个基准日期，
+     * 在 `snapshot` 是 `2/29` 而当前年份是平年时会**直接抛 `DateTimeException`**
+     * （实测：`LocalDate.of(2027, 2, 29)` → `Invalid date 'February 29' as '2027' is not a
+     * leap year`）。按月日比较不会有这个问题。
      *
      * 首次 [reset] 之前快照是 [QueueSnapshot.EMPTY] 的哨兵日期 `0/0`，本方法返回 true，
      * 语义上正是「还没装数据，需要加载」。
+     *
+     * ### 两条使用约束
+     *
+     * 1. **这是电平信号，不是边沿信号。** 从「已发起加载」到「[reset] 回调落地」的整个窗口里
+     *    本方法**持续为 true**。调用方**必须自己维护 in-flight 去重标志**，否则异步读盘+解析
+     *    期间每次检查都会再发起一次加载，而每次 [reset] 都会重新随机洗牌并清零计时——
+     *    队列会在启动瞬间反复跳变。
+     * 2. **不要用 [reset] 装载非今日的数据。** 本方法把「展示日期」与「重载基准」绑在了
+     *    `snapshot` 的月日这同一个字段上。若拿 `reset(entries, 非今日月日)` 去做「浏览昨天 /
+     *    某周年」，本方法会**恒为 true**，调用方下一次检查就会把用户拽回今天并重新洗牌，
+     *    功能静默自毁。将来要支持浏览任意日期，须另加 `pinnedDate` 之类的显式基准，
+     *    把两个职责拆开。
      *
      * 每次调用都会走一遍 [clock]。生产实现是 `LocalDate.now()`，含时区规则查询与对象分配，
      * **不要每帧调**——按秒级节流即可，跨午夜的检测精度用不着每帧。
