@@ -61,7 +61,14 @@ Kotlin 源码根：`app/src/main/java/tech/illusion/todayinhistory/`
 
 **Interfaces:**
 - Consumes: 无
-- Produces: `app/src/main/assets/history/{M}-{D}.json`，内容为 JSON 数组，每项为 `[年份:Int, 正文:String, 类型码:String]`，类型码 ∈ `"e" | "b" | "d"`，按年份升序稳定排序。例：`[[-4713,"中午12点儒略日开始计算。","e"],[1307,"蒙古大汗铁穆耳加封孔子为…","e"]]`
+- Produces: `app/src/main/assets/history/{M}-{D}.json`，内容为 JSON 数组，每项为 `[年份:Int, 正文:String, 类型码:String]`，类型码 ∈ `"e" | "b" | "d"`，按年份升序稳定排序。
+
+  示例是 `8-17.json` 真实的前两条（不是拼凑的）：
+  ```json
+  [[333,"石勒，后赵主（274年出生）","d"],[737,"藤原麻吕，日本奈良时代贵族（695年出生）","d"]]
+  ```
+  注意首条是 `death` 而非 `event`——上游按 event/birth/death 分段排列，本步骤要求跨类型按年份升序，
+  两者顺序不同。
 
 - [ ] **Step 1: 写脚本（含自检模式）**
 
@@ -226,17 +233,26 @@ python3 tools/build_history_assets.py --self-test
 python3 tools/build_history_assets.py
 ```
 
-期望输出结尾两行接近：
+期望输出结尾两行：
 ```
 生成 366 个文件到 app/src/main/assets/history
-保留 54019 条，丢弃 174 条 (0.32%)
+解析 366 天：保留 54018 条，丢弃 175 条 (0.32%)
 ```
+
+这两个数是**硬断言**，不是「接近即可」。175 条丢弃由两个独立过滤器贡献：
+`parse_year` 丢掉 174 条无效年份，空正文过滤再丢掉 1 条（`10-15.json` 的 `[1986,"","e"]`，
+全库仅此一条，留着会在焦点卡上渲染成一张空白卡片）。
 
 - [ ] **Step 4: 抽检产物**
 
 ```bash
 ls app/src/main/assets/history | wc -l          # 期望 366
-du -sh app/src/main/assets/history              # 期望约 4.3M
+
+# 注意用 stat 求和而不是 du：366 个小文件在 APFS 上按 4KiB 块分配，
+# du 报的是占用块（约 4.9M），不是真实字节。
+find app/src/main/assets/history -name '*.json' -exec stat -f%z {} + | paste -sd+ - | bc
+# 期望约 4,414,000（4.21 MiB）
+
 python3 -c "
 import json
 d = json.load(open('app/src/main/assets/history/8-17.json'))
