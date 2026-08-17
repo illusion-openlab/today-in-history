@@ -2,4 +2,15 @@
     <string name="app_name">VolumetricWindowContainer</string>
     <string name="homepage_title">Volumetric WindowContainer</string>
     <string name="homepage_body">The Volumetric WindowContainer is a balanced spatial container designed for medium-scale 3D content. It is ideal for: interactable 3D objects (gadgets, wearables, or tools), medium-detail models, scenarios requiring moderate spatial depth and object exploration.</string>
+
+    <!-- 三种条目类型的标签，与 Kind 一一对应（见 panels/FocusCard.kt 的 labelOf）。 -->
+    <string name="kind_event">大事记</string>
+    <string name="kind_birth">出生</string>
+    <string name="kind_death">逝世</string>
+
+    <!-- 日期牌文案。年份不走资源：见 panels/YearLabel.kt 的 formatYear。 -->
+    <string name="date_format">%1$d月%2$d日</string>
+
+    <!-- 当天没有任何条目时焦点卡的占位文案。 -->
+    <string name="empty_day">今天没有找到记录</string>
 </resources>
