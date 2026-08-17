@@ -128,6 +128,47 @@ class SlotLayoutTest {
         }
     }
 
+    /**
+     * 阶数必须钉死取值：`1 - (1 - t)^n` 的整个族（n ≥ 2）都满足端点、单调、值域和
+     * 「全程快于线性」，靠不变量筛不出阶数——Quad(`1-(1-t)²`) 和 Quart(`1-(1-t)⁴`)
+     * 能让其余全部测试变绿。而三次是 easeOutCubic 的数学定义，不是 Task 9 的可调参数。
+     */
+    @Test
+    fun `缓动是三次而非其它阶`() {
+        assertEquals(0.271f, SlotLayout.easeOutCubic(0.1f), EPS) // 1 - 0.9³
+        assertEquals(0.875f, SlotLayout.easeOutCubic(0.5f), EPS) // 1 - 0.5³
+        assertEquals(0.936f, SlotLayout.easeOutCubic(0.6f), EPS) // 1 - 0.4³
+        assertEquals(0.999f, SlotLayout.easeOutCubic(0.9f), EPS) // 1 - 0.1³
+    }
+
+    /**
+     * `Float.coerceIn` 用 `<` / `>` 实现，NaN 与任何数比较都是 false，会被**原样返回**。
+     * 不设防的话 NaN 会一路穿透成全 NaN 姿态并灌进场景变换。
+     * 现实触发点：动画驱动方算 `elapsed / duration`，duration 为 0 时得 `0f/0f` = NaN。
+     */
+    @Test
+    fun `NaN 进度退化为起点而不穿透`() {
+        assertEquals(0f, SlotLayout.easeOutCubic(Float.NaN), EPS)
+
+        val a = SlotLayout.poseFor(0)
+        val b = SlotLayout.poseFor(3)
+
+        assertEquals(a, SlotLayout.lerp(a, b, Float.NaN))
+    }
+
+    /** ±Inf 本来就能被 coerceIn 正常钳制，一并钉住防回归。 */
+    @Test
+    fun `无穷大进度被钳制到端点`() {
+        assertEquals(1f, SlotLayout.easeOutCubic(Float.POSITIVE_INFINITY), EPS)
+        assertEquals(0f, SlotLayout.easeOutCubic(Float.NEGATIVE_INFINITY), EPS)
+
+        val a = SlotLayout.poseFor(0)
+        val b = SlotLayout.poseFor(3)
+
+        assertEquals(b, SlotLayout.lerp(a, b, Float.POSITIVE_INFINITY))
+        assertEquals(a, SlotLayout.lerp(a, b, Float.NEGATIVE_INFINITY))
+    }
+
     /** brief 只在 t=0.25 采样一次；缓入缓出等曲线能蒙混过关。这里全程比对线性。 */
     @Test
     fun `缓动全程快于线性`() {
@@ -138,22 +179,28 @@ class SlotLayoutTest {
         }
     }
 
-    /** brief 只比较了 datePose 的 z 和 y，scale/alpha 零覆盖。 */
+    /**
+     * brief 只比较了 datePose 的 z 和 y，alpha 零覆盖。
+     *
+     * 这里**只钉 alpha**：钉在最前的日期牌就该全不透明，那是语义不变量。scale 不是——
+     * 日期牌和卡片是不同元件，没有任何语义要求它与焦点卡等大，Task 9 完全可能把它调小
+     * 以免抢眼。scale 的约束放到下面的范围/可见性检查里。
+     */
     @Test
-    fun `日期牌不透明且原尺寸`() {
-        assertEquals(1f, SlotLayout.datePose.scale, EPS)
+    fun `日期牌不透明`() {
         assertEquals(1f, SlotLayout.datePose.alpha, EPS)
     }
 
-    /** brief 的范围检查只遍历了槽位，datePose 飞出容器也不会红。 */
+    /** brief 的范围检查只遍历了槽位，datePose 飞出容器或缩成 0 都不会红。 */
     @Test
-    fun `日期牌的因子也落在容器范围内`() {
+    fun `日期牌的因子也落在容器范围内且可见`() {
         val date = SlotLayout.datePose
 
         assertTrue("z 越界: ${date.zFactor}", date.zFactor in -0.5f..0.5f)
         assertTrue("y 越界: ${date.yFactor}", date.yFactor in -0.5f..0.5f)
         assertTrue("scale 越界: ${date.scale}", date.scale in 0f..1f)
         assertTrue("alpha 越界: ${date.alpha}", date.alpha in 0f..1f)
+        assertTrue("日期牌的 scale 必须为正", date.scale > 0f)
     }
 
     /**
