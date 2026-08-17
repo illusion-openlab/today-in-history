@@ -1043,13 +1043,22 @@ object SlotLayout {
     /** 越界的槽位号被钳制到最近的合法槽位。 */
     fun poseFor(slot: Int): SlotPose = poses[slot.coerceIn(0, VISIBLE_SLOTS - 1)]
 
+    /**
+     * 端点精确的线性插值。
+     *
+     * **不要写成 `from + (to - from) * k`** —— 那个形式在 Float 精度下 k=1 时端点不精确：
+     * 实测 `0.3f -> -0.2f` 得 `-0.19999999`，`1.0f -> 0.48f` 得 `0.48000002`，
+     * 会让 `lerp(a, b, 1f) == b` 的相等断言失败。卡片每 5 分钟推进一次，
+     * 端点不精确还会逐轮累积 ulp 偏移，使「当前姿态 == 某槽位姿态」的判断永久失效。
+     */
     fun lerp(from: SlotPose, to: SlotPose, t: Float): SlotPose {
         val k = t.coerceIn(0f, 1f)
+        val inv = 1f - k
         return SlotPose(
-            zFactor = from.zFactor + (to.zFactor - from.zFactor) * k,
-            yFactor = from.yFactor + (to.yFactor - from.yFactor) * k,
-            scale = from.scale + (to.scale - from.scale) * k,
-            alpha = from.alpha + (to.alpha - from.alpha) * k,
+            zFactor = from.zFactor * inv + to.zFactor * k,
+            yFactor = from.yFactor * inv + to.yFactor * k,
+            scale = from.scale * inv + to.scale * k,
+            alpha = from.alpha * inv + to.alpha * k,
         )
     }
 
