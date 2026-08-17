@@ -85,15 +85,13 @@ fun labelOf(kind: Kind): Int =
  */
 @Composable
 fun FocusCard(entry: HistoryEntry?, alpha: Float, onClick: () -> Unit) {
-    // 必须先落到局部变量：在 graphicsLayer 的带接收者 lambda 里，隐式接收者的成员
-    // 比外层函数参数更靠内，裸写 `alpha` 会解析到 GraphicsLayerScope.alpha 自身，
-    // `this.alpha = alpha` 就成了自赋值，参数被静默丢掉。
-    val layerAlpha = alpha
-
     PicoTheme {
         Column(
             modifier =
-                Modifier.graphicsLayer { this.alpha = layerAlpha }
+                // `this.` 不能省：裸写 `alpha = alpha` 时左侧解析到本函数的参数（val），
+                // 编译期直接报 "'val' cannot be reassigned"。加 `this.` 后左侧是
+                // GraphicsLayerScope.alpha、右侧是参数，即标准的 `this.x = x` 构造器写法。
+                Modifier.graphicsLayer { this.alpha = alpha }
                     .width(560.dp)
                     .clip(RoundedCornerShape(28.dp))
                     .backgroundMaterial(true, Material.Thick)

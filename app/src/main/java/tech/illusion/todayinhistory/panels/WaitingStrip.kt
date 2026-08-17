@@ -47,13 +47,11 @@ import tech.illusion.todayinhistory.data.HistoryEntry
 fun WaitingStrip(entry: HistoryEntry?, alpha: Float, onClick: () -> Unit) {
     if (entry == null) return
 
-    // 见 FocusCard 里同名变量的注释：graphicsLayer 的接收者成员会遮蔽同名参数。
-    val layerAlpha = alpha
-
     PicoTheme {
         Row(
             modifier =
-                Modifier.graphicsLayer { this.alpha = layerAlpha }
+                // `this.` 不能省，理由见 FocusCard 同处注释。
+                Modifier.graphicsLayer { this.alpha = alpha }
                     .width(520.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .backgroundMaterial(true, Material.Regular)
