@@ -233,13 +233,13 @@ python3 tools/build_history_assets.py --self-test
 python3 tools/build_history_assets.py
 ```
 
-期望输出结尾两行：
+期望输出结尾两行（注意顺序：解析统计在前，落盘确认在后 —— 断言通过才落盘）：
 ```
-生成 366 个文件到 app/src/main/assets/history
 解析 366 天：保留 54018 条，丢弃 175 条 (0.32%)
+生成 366 个文件到 app/src/main/assets/history
 ```
 
-这两个数是**硬断言**，不是「接近即可」。175 条丢弃由两个独立过滤器贡献：
+天数、保留数、丢弃数这**三个**数都是硬断言，不是「接近即可」。175 条丢弃由两个独立过滤器贡献：
 `parse_year` 丢掉 174 条无效年份，空正文过滤再丢掉 1 条（`10-15.json` 的 `[1986,"","e"]`，
 全库仅此一条，留着会在焦点卡上渲染成一张空白卡片）。
 
@@ -251,7 +251,7 @@ ls app/src/main/assets/history | wc -l          # 期望 366
 # 注意用 stat 求和而不是 du：366 个小文件在 APFS 上按 4KiB 块分配，
 # du 报的是占用块（约 4.9M），不是真实字节。
 find app/src/main/assets/history -name '*.json' -exec stat -f%z {} + | paste -sd+ - | bc
-# 期望约 4,414,000（4.21 MiB）
+# 期望 4,415,254（4.21 MiB）
 
 python3 -c "
 import json
