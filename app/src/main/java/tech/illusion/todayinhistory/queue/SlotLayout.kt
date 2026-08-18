@@ -83,13 +83,15 @@ object SlotLayout {
      * 改动，需重新推导。
      */
     /**
-     * 离场姿态：被推走的那张卡**原地缩小并后退**，不做横向移动。
+     * 离场姿态：被推走的那张卡**缩小并向上飘走**，不做横向移动、不改深度。
      *
-     * 早先的做法是向左滑出容器，实测被容器边界裁断，观感很差。现在 x/y 与 slot 0 相同，
-     * 只改 z 与 scale：卡片一边缩小一边退到堆叠背后（z 0.20 远小于最靠后那张的 0.3675），
-     * 被六张卡挡住，等于消失。
+     * 早先的做法是向左滑出容器，实测被容器边界裁断，观感很差。现在 x 与 z 都与 slot 0 相同，
+     * 只改 y 与 scale：卡片一边缩小一边向上飘走。
      *
-     * **消失靠「缩小 + 后退」，不靠 alpha——两条不透明度通道都不通：**
+     * 缩得很快——`easeOutCubic(0.5) = 0.875`，过渡到一半时 scale 已经降到约 0.17——
+     * 所以它在升到堆叠上方之前就只剩一小片，不会像整张卡横移那样被边界切成两半。
+     *
+     * **消失靠「缩小 + 上移」，不靠 alpha——两条不透明度通道都不通：**
      * `OpacityControllerComponent` 对 attachment 面板不起作用（设备实测：卡片移动了
      * 却一点没变淡）；Compose 的 graphicsLayer alpha 受制于「SDK 只在面板**测量尺寸变化**
      * 时才推送新像素」，过渡结束后内容变空但尺寸不变，屏幕上会永远留着最后一次渲染的那张卡。
@@ -99,7 +101,7 @@ object SlotLayout {
      * 这里取 0.05f（约 28dp 宽的一小片），既非零又小到看不出。
      */
     val exitPose =
-        SlotPose(xFactor = -0.150f, yawDegrees = StackYaw, zFactor = 0.2000f, yFactor = -0.360f, scale = 0.05f, alpha = 0f)
+        SlotPose(xFactor = -0.150f, yawDegrees = StackYaw, zFactor = 0.4300f, yFactor = 0.340f, scale = 0.05f, alpha = 0f)
 
 
     private val poses =

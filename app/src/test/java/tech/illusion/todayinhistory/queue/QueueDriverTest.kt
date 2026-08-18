@@ -674,7 +674,7 @@ class QueueDriverTest {
     }
 
     @Test
-    fun `离场姿态从焦点槽位缩小并后退`() {
+    fun `离场姿态从焦点槽位缩小并上移`() {
         val (d, _) = driver()
         d.reset(entries(1, 2, 3, 4, 5, 6, 7, 8), 8, 17)
 
@@ -690,11 +690,11 @@ class QueueDriverTest {
         val mid = d.exitPoseNow()
         val focus = SlotLayout.poseFor(0)
         assertTrue("应已开始缩小", mid.scale < focus.scale)
-        assertTrue("应已开始后退", mid.zFactor < focus.zFactor)
+        assertTrue("应已开始上移", mid.yFactor > focus.yFactor)
         assertTrue("不应缩过头", mid.scale > SlotLayout.exitPose.scale)
-        // 离场是原地动作：横向与纵向都不该动，否则会被容器边界裁断
+        // 只缩小 + 上移：横向不动（横移会被容器边界切成两半），深度也不动
         assertEquals("离场不应横向移动", focus.xFactor, mid.xFactor, EPS)
-        assertEquals("离场不应纵向移动", focus.yFactor, mid.yFactor, EPS)
+        assertEquals("离场不应改变深度", focus.zFactor, mid.zFactor, EPS)
 
         d.tick(TRANSITION_SECONDS)
         assertEquals(SlotLayout.exitPose, d.exitPoseNow())
@@ -706,9 +706,10 @@ class QueueDriverTest {
         // 这条断言就是那次事故的护栏。
         assertTrue("离场 scale 必须为正", SlotLayout.exitPose.scale > 0f)
         assertTrue("离场 scale 应小到看不出", SlotLayout.exitPose.scale < 0.1f)
-        // 退到最靠后那张卡之后，被堆叠遮住
-        val backmost = (0 until VISIBLE_SLOTS).minOf { SlotLayout.poseFor(it).zFactor }
-        assertTrue("离场应退到堆叠背后", SlotLayout.exitPose.zFactor < backmost)
+        // 升到堆叠上方，且不出容器（出界会被裁断，正是这次要避免的）
+        val topmost = (0 until VISIBLE_SLOTS).maxOf { SlotLayout.poseFor(it).yFactor }
+        assertTrue("离场应升到堆叠上方", SlotLayout.exitPose.yFactor > topmost)
+        assertTrue("离场终点不应出容器", SlotLayout.exitPose.yFactor < 0.5f)
     }
 
     @Test
