@@ -5,9 +5,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
@@ -25,8 +28,7 @@ import kotlinx.coroutines.launch
 import tech.illusion.todayinhistory.data.HistoryRepository
 import tech.illusion.todayinhistory.data.asAssetSource
 import tech.illusion.todayinhistory.panels.DatePanel
-import tech.illusion.todayinhistory.panels.FocusCard
-import tech.illusion.todayinhistory.panels.WaitingStrip
+import tech.illusion.todayinhistory.panels.HistoryCard
 import tech.illusion.todayinhistory.queue.DatePanelComponent
 import tech.illusion.todayinhistory.queue.HistoryCardComponent
 import tech.illusion.todayinhistory.queue.HistoryQueueSystem
@@ -113,6 +115,16 @@ fun HomeVolume() {
     val driver = remember { QueueDriver(clock = { LocalDate.now() }, random = Random.Default) }
 
     val snapshot by QueueHost.snapshots.collectAsState()
+
+    // SDK 只在面板**测量尺寸变化**时才把重绘后的像素推送到空间表面（Task 8 判别实验实测）。
+    // 六张卡等大 ⇒ 尺寸恒定 ⇒ 内容变了表面却不更新。这里让宽度在每次推进时翻转 1dp，
+    // 强制触发推送。1dp 肉眼不可见，但**删掉它整个队列会停止刷新**。
+    //
+    // 为什么用「随快照递增的轮次」而不是从内容派生（例如 year 的奇偶）：
+    // 内容派生有约 50% 的推进不会翻转，等于一半时候仍然不更新。
+    var revision by remember { mutableIntStateOf(0) }
+    LaunchedEffect(snapshot) { revision++ }
+    val nudgeDp = revision % 2
 
     DisposableEffect(Unit) {
         // 顺序有意义：driver 和回调都就位之后才注册 System，
@@ -249,10 +261,8 @@ fun HomeVolume() {
                     // alpha 按槽位静态取一次：槽位号终生不变，所以这个值也不会变，
                     // 不会因为队列推进而触发重组。
                     val alpha = SlotLayout.poseFor(slot).alpha
-                    if (slot == 0) {
-                        FocusCard(entry = entry, alpha = alpha) { QueueHost.onCardClicked(0) }
-                    } else {
-                        WaitingStrip(entry = entry, alpha = alpha) { QueueHost.onCardClicked(slot) }
+                    HistoryCard(entry = entry, alpha = alpha, nudgeDp = nudgeDp) {
+                        QueueHost.onCardClicked(slot)
                     }
                 }
             }

@@ -26,7 +26,7 @@ object SlotLayout {
      * scale **没有上界约束**：日期牌和卡片是不同元件，既没有语义要求它与焦点卡等大，
      * 也没有语义要求它不能更大，调成 1.15f 是合法的。只要求为正（不能隐形）。
      */
-    val datePose = SlotPose(zFactor = 0.45f, yFactor = 0.34f, scale = 1.00f, alpha = 1.00f)
+    val datePose = SlotPose(zFactor = 0.050f, yFactor = 0.285f, scale = 1f, alpha = 1.00f)
 
     /**
      * 槽位 0 是焦点卡，1..5 是待读条。
@@ -40,14 +40,31 @@ object SlotLayout {
      * 而 data class 的 equals 对 Float 走 `Float.compare`，`-0.0f != 0.0f`——端点逐比特精确的
      * 契约会因此静默失效。[datePose] 同理。
      */
+    /**
+     * 钱包式卡片堆叠：六张**等大**卡片沿深度轴紧密叠放，只有最前一张完整可见，
+     * 后面每张向上错开约 4cm——刚好露出类型标签与年份那一行，与钱包里卡片露出卡号的观感一致。
+     *
+     * 三条与旧版（纵深长廊）的关键差别，改动时请一并考虑：
+     *
+     * 1. **scale 恒为 1.0，不再递减。** 卡片等大是这套视觉的前提；一旦递减，
+     *    堆叠会变回长廊。
+     * 2. **深度间隔约 1cm**（zFactor 步进 0.0125，容器实测 0.8m）。这个量级几乎不产生
+     *    透视差，纵深感主要由垂直错位和 alpha 提供，不是由深度提供。
+     * 3. **后面的卡不需要被读。** 它们只露出一条边，所以此前「slot 5 字形只有 4px、
+     *    7.6 arcmin，远低于中文可读的 20 arcmin」那个问题在这套布局下不存在——
+     *    但也意味着**不要**再指望把 alpha 抬高就能让它们可读，那是另一套设计。
+     *
+     * 数值仍是起点：容器实测 0.8m 立方，若 Manifest 的 defaultsize 或 resizerestriction
+     * 改动，需重新推导。
+     */
     private val poses =
         listOf(
-            SlotPose(zFactor = 0.30f, yFactor = -0.12f, scale = 1.00f, alpha = 1.00f),
-            SlotPose(zFactor = 0.10f, yFactor = 0.02f, scale = 0.72f, alpha = 0.85f),
-            SlotPose(zFactor = -0.06f, yFactor = 0.11f, scale = 0.62f, alpha = 0.65f),
-            SlotPose(zFactor = -0.20f, yFactor = 0.18f, scale = 0.54f, alpha = 0.48f),
-            SlotPose(zFactor = -0.32f, yFactor = 0.24f, scale = 0.47f, alpha = 0.34f),
-            SlotPose(zFactor = -0.42f, yFactor = 0.29f, scale = 0.42f, alpha = 0.22f),
+            SlotPose(zFactor = 0.0300f, yFactor = -0.130f, scale = 1f, alpha = 1.00f),
+            SlotPose(zFactor = 0.0175f, yFactor = -0.080f, scale = 1f, alpha = 0.92f),
+            SlotPose(zFactor = 0.0050f, yFactor = -0.030f, scale = 1f, alpha = 0.84f),
+            SlotPose(zFactor = -0.0075f, yFactor = 0.020f, scale = 1f, alpha = 0.76f),
+            SlotPose(zFactor = -0.0200f, yFactor = 0.070f, scale = 1f, alpha = 0.68f),
+            SlotPose(zFactor = -0.0325f, yFactor = 0.120f, scale = 1f, alpha = 0.60f),
         )
 
     init {

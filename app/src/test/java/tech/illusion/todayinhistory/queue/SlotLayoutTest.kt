@@ -17,15 +17,19 @@ class SlotLayoutTest {
     }
 
     @Test
-    fun `槽位越深则 z 越小 尺寸越小 越透明`() {
+    fun `槽位越深则 z 越小 越透明 但尺寸恒定`() {
+        // 钱包式堆叠：卡片**等大**是这套视觉的前提，scale 不再参与纵深表达。
+        // 纵深由 z、垂直错位与 alpha 共同提供。把 scale 改成递减会让堆叠退回长廊，
+        // 所以这里同时钉死「递减的三项」与「恒定的一项」。
         for (slot in 1 until VISIBLE_SLOTS) {
             val near = SlotLayout.poseFor(slot - 1)
             val far = SlotLayout.poseFor(slot)
 
             assertTrue("slot $slot 的 z 应比前一个小", far.zFactor < near.zFactor)
-            assertTrue("slot $slot 的 scale 应比前一个小", far.scale < near.scale)
             assertTrue("slot $slot 的 alpha 应比前一个小", far.alpha < near.alpha)
             assertTrue("slot $slot 的 y 应比前一个高", far.yFactor > near.yFactor)
+            assertEquals("slot $slot 的 scale 必须与焦点卡相同（等大是堆叠的前提）",
+                near.scale, far.scale, EPS)
         }
     }
 
@@ -277,7 +281,8 @@ class SlotLayoutTest {
             val cur = SlotLayout.lerp(a, b, i / 20f)
 
             assertTrue("z 应单调递增", cur.zFactor > prev.zFactor)
-            assertTrue("scale 应单调递增", cur.scale > prev.scale)
+            // 卡片等大：scale 不参与插值，全程恒定。这条断言同时挡住「把 scale 改回递减」。
+            assertEquals("scale 应全程恒定", prev.scale, cur.scale, EPS)
             assertTrue("alpha 应单调递增", cur.alpha > prev.alpha)
             assertTrue("y 应单调递减", cur.yFactor < prev.yFactor)
             prev = cur
