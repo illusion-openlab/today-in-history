@@ -46,12 +46,21 @@ class SlotLayoutTest {
     }
 
     @Test
-    fun `日期牌在焦点卡前方且更高`() {
-        val date = SlotLayout.datePose
+    fun `时钟两层都在堆叠前方且更高`() {
         val focus = SlotLayout.poseFor(0)
 
-        assertTrue(date.zFactor > focus.zFactor)
-        assertTrue(date.yFactor > focus.yFactor)
+        // 两层都要在堆叠之前、之上——时钟是常驻锚点，不能被卡片挡住。
+        for (layer in 0..1) {
+            val clock = SlotLayout.clockPose(layer)
+            assertTrue("第 $layer 层的 z 应在焦点卡之前", clock.zFactor > focus.zFactor)
+            assertTrue("第 $layer 层的 y 应在焦点卡之上", clock.yFactor > focus.yFactor)
+        }
+
+        // 两层之间也要有深度差，否则「立体」只是并排。
+        assertTrue(
+            "时间层必须在日期层之前",
+            SlotLayout.clockPose(0).zFactor > SlotLayout.clockPose(1).zFactor,
+        )
     }
 
     @Test
@@ -191,8 +200,8 @@ class SlotLayoutTest {
      * 以免抢眼。scale 的约束放到下面的范围/可见性检查里。
      */
     @Test
-    fun `日期牌不透明`() {
-        assertEquals(1f, SlotLayout.datePose.alpha, EPS)
+    fun `时钟第一层不透明`() {
+        assertEquals(1f, SlotLayout.clockPose(0).alpha, EPS)
     }
 
     /**
@@ -205,13 +214,19 @@ class SlotLayoutTest {
      * 对照：槽位侧的 `scale in 0f..1f` 是真不变量（不该有卡片比焦点卡大），不要照这里放宽。
      */
     @Test
-    fun `日期牌的因子也落在容器范围内且可见`() {
-        val date = SlotLayout.datePose
+    fun `时钟两层的因子都落在容器范围内且可见`() {
+        for (layer in 0..1) {
+            val clock = SlotLayout.clockPose(layer)
+            assertTrue("第 $layer 层 z 越界: ${clock.zFactor}", clock.zFactor in -0.5f..0.5f)
+            assertTrue("第 $layer 层 y 越界: ${clock.yFactor}", clock.yFactor in -0.5f..0.5f)
+            assertTrue("第 $layer 层 x 越界: ${clock.xFactor}", clock.xFactor in -0.5f..0.5f)
+            assertTrue("第 $layer 层 alpha 越界: ${clock.alpha}", clock.alpha in 0f..1f)
+            assertTrue("第 $layer 层 scale 必须为正", clock.scale > 0f)
+        }
 
-        assertTrue("z 越界: ${date.zFactor}", date.zFactor in -0.5f..0.5f)
-        assertTrue("y 越界: ${date.yFactor}", date.yFactor in -0.5f..0.5f)
-        assertTrue("alpha 越界: ${date.alpha}", date.alpha in 0f..1f)
-        assertTrue("日期牌的 scale 必须为正", date.scale > 0f)
+        // 越界的层号钳到最近一层，不抛异常
+        assertEquals(SlotLayout.clockPose(0), SlotLayout.clockPose(-3))
+        assertEquals(SlotLayout.clockPose(1), SlotLayout.clockPose(9))
     }
 
     /**

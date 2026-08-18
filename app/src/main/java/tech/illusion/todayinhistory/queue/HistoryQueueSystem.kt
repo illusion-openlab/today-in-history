@@ -4,6 +4,7 @@ import android.util.Log
 import com.pico.spatial.core.ecs.EntityQueryCondition
 import com.pico.spatial.core.ecs.SceneUpdateContext
 import com.pico.spatial.core.ecs.System
+import com.pico.spatial.core.math.EulerAngles
 import com.pico.spatial.core.ecs.OpacityControllerComponent
 import com.pico.spatial.core.ecs.TransformComponent
 import com.pico.spatial.core.math.Vector3
@@ -426,7 +427,8 @@ class HistoryQueueSystem : System() {
                 logMissingTransform("日期牌")
                 return@forEach
             }
-            applyPose(transform, SlotLayout.datePose, bounds)
+            val layer = entity.components[DatePanelComponent::class.java]?.layer ?: 0
+            applyPose(transform, SlotLayout.clockPose(layer), bounds)
         }
     }
 
@@ -448,6 +450,7 @@ class HistoryQueueSystem : System() {
         transform.position =
             Vector3(pose.xFactor * bounds.x, pose.yFactor * bounds.y, pose.zFactor * bounds.z)
         transform.scaleVector = Vector3(pose.scale, pose.scale, pose.scale)
+        transform.eulerAngles = EulerAngles(0f, pose.yawDegrees, 0f)
     }
 
     /**

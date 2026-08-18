@@ -15,6 +15,8 @@ data class SlotPose(
      * 它只服务于**离场动画**：卡片被推走时向左滑出。
      */
     val xFactor: Float = 0f,
+    /** 绕 Y 轴的偏航角（度）。整叠卡片共用同一个值，让堆叠略微侧向观者。 */
+    val yawDegrees: Float = 0f,
     val zFactor: Float,
     val yFactor: Float,
     val scale: Float,
@@ -24,6 +26,14 @@ data class SlotPose(
 object SlotLayout {
 
     /**
+     * 整叠卡片共用的偏航角（度），让堆叠略微侧转而不是正对观者。
+     *
+     * 六个槽位与离场卡用的是**同一个值**——侧转的是整叠，不是每张各转各的，
+     * 否则卡片之间会互相穿插。
+     */
+    private const val StackYaw = 14f
+
+    /**
      * 日期牌：钉在最前上方，不参与队列推进。
      *
      * 同样是 Task 9 要调的姿态字面量，零值一律写 `0.0f` 而非 `-0.0f`，理由见 [poses]。
@@ -31,7 +41,16 @@ object SlotLayout {
      * scale **没有上界约束**：日期牌和卡片是不同元件，既没有语义要求它与焦点卡等大，
      * 也没有语义要求它不能更大，调成 1.15f 是合法的。只要求为正（不能隐形）。
      */
-    val datePose = SlotPose(zFactor = 0.050f, yFactor = 0.285f, scale = 1f, alpha = 1.00f)
+    val clockPoses =
+        listOf(
+            // 第 0 层：时间，在前
+            SlotPose(xFactor = 0.050f, yawDegrees = StackYaw, zFactor = 0.060f, yFactor = 0.030f, scale = 1f, alpha = 1.00f),
+            // 第 1 层：日期与星期，略靠后、略右偏
+            SlotPose(xFactor = 0.130f, yawDegrees = StackYaw, zFactor = 0.042f, yFactor = -0.030f, scale = 1f, alpha = 0.90f),
+        )
+
+    /** 时钟组第 [layer] 层的姿态；越界钳到最近一层。 */
+    fun clockPose(layer: Int): SlotPose = clockPoses[layer.coerceIn(0, clockPoses.size - 1)]
 
     /**
      * 槽位 0 是焦点卡，1..5 是待读条。
@@ -65,20 +84,35 @@ object SlotLayout {
     /**
      * 离场姿态：被推走的那张卡滑到的终点。
      *
-     * 向左滑出**一整个卡片宽度**（560dp ≈ 0.22m ≈ 容器宽的 0.28）并同时透明到 0，
-     * 所以它在完全离开视野之前就已经看不见了，不会在容器边缘留下一条硬边。
+     * 向左滑出**一整个卡片宽度**（560dp ≈ 0.22m ≈ 容器宽的 0.28），同时**缩到 0**。
+     *
+     * **消失靠「移出容器」，不靠缩放、也不靠 alpha。**
+     *
+     * ⚠️ 设备实测：**`scale = 0f` 会把整个 SpatialView 的渲染全部拖垮**——六张卡、日期牌、
+     * 离场卡同时从画面消失，进程却还活着、logcat 无任何错误，且模拟器需要重启才能恢复。
+     * 极小缩放（0.02f）同样不可靠。这是最难排查的一类故障（无声、全局、非崩溃），
+     * 所以离场卡**始终保持 scale = 1**，靠把它移到容器之外（±0.5 是容器边界，
+     * -1.20 远在其外）来消失。
+     * 不透明度有两条通道，两条都不通：`OpacityControllerComponent` 对
+     * attachment 面板不起作用（设备实测：卡片滑走了但一点没变淡）；Compose 的
+     * graphicsLayer alpha 则受制于「SDK 只在面板**测量尺寸变化**时才推送新像素」——
+     * 过渡结束后内容变空但尺寸不变，屏幕上会永远留着最后一次渲染的那张卡。
+     * 而 `scaleVector` 走的是 TransformComponent 通道，与位置同源，实测可靠。
+     *
      * z 与 slot 0 相同——离场是纯粹的横向动作，不带纵深变化，否则会读成「掉下去」。
      */
-    val exitPose = SlotPose(xFactor = -0.34f, zFactor = 0.0300f, yFactor = -0.130f, scale = 1f, alpha = 0f)
+    val exitPose =
+        SlotPose(xFactor = -1.20f, yawDegrees = StackYaw, zFactor = 0.0300f, yFactor = -0.440f, scale = 1f, alpha = 0f)
+
 
     private val poses =
         listOf(
-            SlotPose(zFactor = 0.0300f, yFactor = -0.130f, scale = 1f, alpha = 1.00f),
-            SlotPose(zFactor = 0.0175f, yFactor = -0.080f, scale = 1f, alpha = 0.92f),
-            SlotPose(zFactor = 0.0050f, yFactor = -0.030f, scale = 1f, alpha = 0.84f),
-            SlotPose(zFactor = -0.0075f, yFactor = 0.020f, scale = 1f, alpha = 0.76f),
-            SlotPose(zFactor = -0.0200f, yFactor = 0.070f, scale = 1f, alpha = 0.68f),
-            SlotPose(zFactor = -0.0325f, yFactor = 0.120f, scale = 1f, alpha = 0.60f),
+            SlotPose(xFactor = 0.000f, yawDegrees = StackYaw, zFactor = 0.0300f, yFactor = -0.440f, scale = 1f, alpha = 1.00f),
+            SlotPose(xFactor = 0.035f, yawDegrees = StackYaw, zFactor = 0.0175f, yFactor = -0.390f, scale = 1f, alpha = 0.92f),
+            SlotPose(xFactor = 0.070f, yawDegrees = StackYaw, zFactor = 0.0050f, yFactor = -0.340f, scale = 1f, alpha = 0.84f),
+            SlotPose(xFactor = 0.105f, yawDegrees = StackYaw, zFactor = -0.0075f, yFactor = -0.290f, scale = 1f, alpha = 0.76f),
+            SlotPose(xFactor = 0.140f, yawDegrees = StackYaw, zFactor = -0.0200f, yFactor = -0.240f, scale = 1f, alpha = 0.68f),
+            SlotPose(xFactor = 0.175f, yawDegrees = StackYaw, zFactor = -0.0325f, yFactor = -0.190f, scale = 1f, alpha = 0.60f),
         )
 
     init {
@@ -111,6 +145,7 @@ object SlotLayout {
         val inv = 1f - k
         return SlotPose(
             xFactor = from.xFactor * inv + to.xFactor * k,
+            yawDegrees = from.yawDegrees * inv + to.yawDegrees * k,
             zFactor = from.zFactor * inv + to.zFactor * k,
             yFactor = from.yFactor * inv + to.yFactor * k,
             scale = from.scale * inv + to.scale * k,

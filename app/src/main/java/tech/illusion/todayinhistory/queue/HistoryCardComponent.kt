@@ -37,7 +37,15 @@ class HistoryCardComponent : Component() {
  */
 class DatePanelComponent : Component() {
 
-    override fun clone(): Component = DatePanelComponent()
+    /**
+     * 时钟组的第几层：0 = 时间（在前），1 = 日期与星期（略靠后、略偏移）。
+     *
+     * 分两层不是为了排版，是为了在**深度**上拉开一点——这是 Volume 才有的表达，
+     * 平面窗口里做不出来。两层的姿态由 [SlotLayout.clockPose] 给出。
+     */
+    var layer: Int = 0
+
+    override fun clone(): Component = DatePanelComponent().also { it.layer = layer }
 }
 
 /**

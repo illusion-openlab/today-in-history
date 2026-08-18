@@ -10,6 +10,14 @@
 
     <!-- 日期牌文案。年份不走资源：见 panels/YearLabel.kt 的 formatYear。 -->
     <string name="date_format">%1$d月%2$d日</string>
+    <string name="time_format">%1$02d:%2$02d</string>
+    <string name="weekday_mon">星期一</string>
+    <string name="weekday_tue">星期二</string>
+    <string name="weekday_wed">星期三</string>
+    <string name="weekday_thu">星期四</string>
+    <string name="weekday_fri">星期五</string>
+    <string name="weekday_sat">星期六</string>
+    <string name="weekday_sun">星期日</string>
 
     <!-- 当天没有任何条目时焦点卡的占位文案。 -->
     <string name="empty_day">今天没有找到记录</string>

@@ -8,6 +8,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -22,12 +23,15 @@ import com.pico.spatial.ui.foundation.dsl.unregisterSystem
 import com.pico.spatial.ui.platform.LengthUnit
 import com.pico.spatial.ui.platform.LocalPhysicalLengthConverter
 import java.time.LocalDate
+import java.time.LocalDateTime
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.random.Random
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import tech.illusion.todayinhistory.data.HistoryRepository
 import tech.illusion.todayinhistory.data.asAssetSource
 import tech.illusion.todayinhistory.panels.DatePanel
+import tech.illusion.todayinhistory.panels.TimePanel
 import tech.illusion.todayinhistory.panels.HistoryCard
 import tech.illusion.todayinhistory.queue.DatePanelComponent
 import com.pico.spatial.core.ecs.OpacityControllerComponent
@@ -44,6 +48,8 @@ private const val LOG_TAG = "HomeVolume"
 private const val EXIT_ATTACHMENT = "exit_card"
 
 private const val DATE_ATTACHMENT = "date_panel"
+
+private const val TIME_ATTACHMENT = "time_panel"
 
 /**
  * 卡片 attachment 的 id。
@@ -130,6 +136,19 @@ fun HomeVolume() {
     LaunchedEffect(snapshot) { revision++ }
     val nudgeDp = revision % 2
 
+    // 时钟：每 10 秒探一次，只有分钟（或日期）变了才写 state，避免无谓重组。
+    // clockNudge 取分钟奇偶，保证每分钟翻转一次——否则 `14:32` 与 `14:33` 的测量宽度
+    // 完全相同，而 SDK 只在尺寸变化时才把新像素推到空间表面，时间会永远停在启动那一刻。
+    var now by remember { mutableStateOf(LocalDateTime.now()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(10_000L)
+            val t = LocalDateTime.now()
+            if (t.minute != now.minute || t.dayOfMonth != now.dayOfMonth) now = t
+        }
+    }
+    val clockNudge = now.minute % 2
+
     DisposableEffect(Unit) {
         // 顺序有意义：driver 和回调都就位之后才注册 System，
         // 否则 System 的第一帧会因为 driver == null 空转一帧。
@@ -212,10 +231,14 @@ fun HomeVolume() {
                 }
             },
         initial = { content, attachments ->
-            // 日期牌：只挂标记组件，位置归 System。
+            // 时钟组两层：只挂标记组件，位置归 System。layer 决定它是时间层还是日期层。
+            attachments.entity(TIME_ATTACHMENT)?.apply {
+                components.set(DatePanelComponent().also { it.layer = 0 })
+                content.addEntity(this)
+            }
             val dateEntity = attachments.entity(DATE_ATTACHMENT)
             dateEntity?.apply {
-                components.set(DatePanelComponent())
+                components.set(DatePanelComponent().also { it.layer = 1 })
                 content.addEntity(this)
             }
 
@@ -241,23 +264,23 @@ fun HomeVolume() {
             }
         },
         attachments = {
+            AttachmentPanel(id = TIME_ATTACHMENT) {
+                TimePanel(hour = now.hour, minute = now.minute, nudgeDp = clockNudge)
+            }
+
             AttachmentPanel(id = DATE_ATTACHMENT) {
-                // 首次 reset 落地之前快照是哨兵 0/0。此时**不能**渲染 `0月0日`，
-                // 但也**不能**什么都不渲染——空内容的 AttachmentPanel 尺寸为 0，
-                // `initial` 里可能就取不到这个实体，日期牌会永久缺席。
+                // 首次 reset 落地之前快照是哨兵 0/0，此时用本地时钟兜底，
+                // 而不是渲染「0月0日」或什么都不渲染（空内容面板尺寸为 0，
+                // `initial` 会取不到实体，日期层将永久缺席）。
                 //
-                // 所以用今天的日期兜底。它不是「看起来合理的假日期」：首次 reset 落地后
-                // 快照里装的就是同一个值，兜底期只有冷启动的头一两帧。
-                //
-                // **副作用（必须知道）**：装载链路整体没跑起来时（协程没跑、信号没回、
-                // 资产全丢），界面会表现为「日期牌正确 + 卡片全空」，而不是明显故障。
-                // 排查这种「日期对但一条内容都没有」时，**不要**从日期牌入手——
-                // 它此刻显示的是本地时钟，不是快照。去看 logcat 有没有「装载 M-D：N 条」。
-                val fallback = remember { LocalDate.now() }
+                // **副作用**：装载链路整体没跑起来时，界面表现为「时间日期正确 + 卡片全空」，
+                // 不是明显故障。排查时不要从这里入手，去看 logcat 有没有「装载 M-D：N 条」。
                 val hasData = snapshot.month != 0
                 DatePanel(
-                    month = if (hasData) snapshot.month else fallback.monthValue,
-                    day = if (hasData) snapshot.day else fallback.dayOfMonth,
+                    month = if (hasData) snapshot.month else now.monthValue,
+                    day = if (hasData) snapshot.day else now.dayOfMonth,
+                    weekday = now.dayOfWeek,
+                    nudgeDp = clockNudge,
                 )
             }
 
