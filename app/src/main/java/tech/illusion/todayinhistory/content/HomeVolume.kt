@@ -30,8 +30,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import tech.illusion.todayinhistory.data.HistoryRepository
 import tech.illusion.todayinhistory.data.asAssetSource
-import tech.illusion.todayinhistory.panels.DatePanel
-import tech.illusion.todayinhistory.panels.TimePanel
+import tech.illusion.todayinhistory.panels.ClockPanel
 import tech.illusion.todayinhistory.panels.HistoryCard
 import tech.illusion.todayinhistory.queue.DatePanelComponent
 import com.pico.spatial.core.ecs.OpacityControllerComponent
@@ -47,9 +46,7 @@ private const val LOG_TAG = "HomeVolume"
 
 private const val EXIT_ATTACHMENT = "exit_card"
 
-private const val DATE_ATTACHMENT = "date_panel"
-
-private const val TIME_ATTACHMENT = "time_panel"
+private const val CLOCK_ATTACHMENT = "clock_panel"
 
 /**
  * 卡片 attachment 的 id。
@@ -232,13 +229,9 @@ fun HomeVolume() {
             },
         initial = { content, attachments ->
             // 时钟组两层：只挂标记组件，位置归 System。layer 决定它是时间层还是日期层。
-            attachments.entity(TIME_ATTACHMENT)?.apply {
-                components.set(DatePanelComponent().also { it.layer = 0 })
-                content.addEntity(this)
-            }
-            val dateEntity = attachments.entity(DATE_ATTACHMENT)
+            val dateEntity = attachments.entity(CLOCK_ATTACHMENT)
             dateEntity?.apply {
-                components.set(DatePanelComponent().also { it.layer = 1 })
+                components.set(DatePanelComponent())
                 content.addEntity(this)
             }
 
@@ -264,19 +257,14 @@ fun HomeVolume() {
             }
         },
         attachments = {
-            AttachmentPanel(id = TIME_ATTACHMENT) {
-                TimePanel(hour = now.hour, minute = now.minute, nudgeDp = clockNudge)
-            }
-
-            AttachmentPanel(id = DATE_ATTACHMENT) {
-                // 首次 reset 落地之前快照是哨兵 0/0，此时用本地时钟兜底，
-                // 而不是渲染「0月0日」或什么都不渲染（空内容面板尺寸为 0，
-                // `initial` 会取不到实体，日期层将永久缺席）。
-                //
-                // **副作用**：装载链路整体没跑起来时，界面表现为「时间日期正确 + 卡片全空」，
+            AttachmentPanel(id = CLOCK_ATTACHMENT) {
+                // 首次 reset 落地之前快照是哨兵 0/0，此时用本地时钟兜底。
+                // **副作用**：装载链路整体没跑起来时，界面表现为「时钟正常 + 卡片全空」，
                 // 不是明显故障。排查时不要从这里入手，去看 logcat 有没有「装载 M-D：N 条」。
                 val hasData = snapshot.month != 0
-                DatePanel(
+                ClockPanel(
+                    hour = now.hour,
+                    minute = now.minute,
                     month = if (hasData) snapshot.month else now.monthValue,
                     day = if (hasData) snapshot.day else now.dayOfMonth,
                     weekday = now.dayOfWeek,

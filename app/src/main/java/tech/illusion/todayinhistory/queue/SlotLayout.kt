@@ -41,16 +41,17 @@ object SlotLayout {
      * scale **没有上界约束**：日期牌和卡片是不同元件，既没有语义要求它与焦点卡等大，
      * 也没有语义要求它不能更大，调成 1.15f 是合法的。只要求为正（不能隐形）。
      */
-    val clockPoses =
-        listOf(
-            // 第 0 层：时间，在前
-            SlotPose(xFactor = 0.050f, yawDegrees = StackYaw, zFactor = 0.060f, yFactor = 0.030f, scale = 1f, alpha = 1.00f),
-            // 第 1 层：日期与星期，略靠后、略右偏
-            SlotPose(xFactor = 0.130f, yawDegrees = StackYaw, zFactor = 0.042f, yFactor = -0.030f, scale = 1f, alpha = 0.90f),
-        )
-
-    /** 时钟组第 [layer] 层的姿态；越界钳到最近一层。 */
-    fun clockPose(layer: Int): SlotPose = clockPoses[layer.coerceIn(0, clockPoses.size - 1)]
+    /**
+     * 时钟面板：时间 + 日期 + 星期，合成一块，放在容器右下角。
+     *
+     * 放右下而不是跟着堆叠，是为了让它成为一个**固定锚点**——卡片会随推进变化，
+     * 时钟不会。x 取 0.32 让它避开堆叠右缘（堆叠现在的右缘约在 0.165），
+     * y 取 -0.38 贴近底部。
+     *
+     * 偏航角与堆叠一致，两者才像在同一个平面上摆着。
+     */
+    val clockPose =
+        SlotPose(xFactor = 0.320f, yawDegrees = StackYaw, zFactor = 0.200f, yFactor = -0.380f, scale = 1f, alpha = 1.00f)
 
     /**
      * 槽位 0 是焦点卡，1..5 是待读条。
@@ -107,12 +108,12 @@ object SlotLayout {
 
     private val poses =
         listOf(
-            SlotPose(xFactor = 0.000f, yawDegrees = StackYaw, zFactor = 0.0300f, yFactor = -0.440f, scale = 1f, alpha = 1.00f),
-            SlotPose(xFactor = 0.035f, yawDegrees = StackYaw, zFactor = 0.0175f, yFactor = -0.390f, scale = 1f, alpha = 0.92f),
-            SlotPose(xFactor = 0.070f, yawDegrees = StackYaw, zFactor = 0.0050f, yFactor = -0.340f, scale = 1f, alpha = 0.84f),
-            SlotPose(xFactor = 0.105f, yawDegrees = StackYaw, zFactor = -0.0075f, yFactor = -0.290f, scale = 1f, alpha = 0.76f),
-            SlotPose(xFactor = 0.140f, yawDegrees = StackYaw, zFactor = -0.0200f, yFactor = -0.240f, scale = 1f, alpha = 0.68f),
-            SlotPose(xFactor = 0.175f, yawDegrees = StackYaw, zFactor = -0.0325f, yFactor = -0.190f, scale = 1f, alpha = 0.60f),
+            SlotPose(xFactor = 0.000f - 0.15f, yawDegrees = StackYaw, zFactor = 0.0300f + 0.2f, yFactor = -0.440f+0.08f, scale = 1f, alpha = 1.00f),
+            SlotPose(xFactor = 0.035f- 0.15f, yawDegrees = StackYaw, zFactor = 0.0175f + 0.2f, yFactor = -0.390f+0.08f, scale = 1f, alpha = 0.92f),
+            SlotPose(xFactor = 0.070f- 0.15f, yawDegrees = StackYaw, zFactor = 0.0050f + 0.2f, yFactor = -0.340f+0.08f, scale = 1f, alpha = 0.84f),
+            SlotPose(xFactor = 0.105f- 0.15f, yawDegrees = StackYaw, zFactor = -0.0075f + 0.2f, yFactor = -0.290f+0.08f, scale = 1f, alpha = 0.76f),
+            SlotPose(xFactor = 0.140f- 0.15f, yawDegrees = StackYaw, zFactor = -0.0200f + 0.2f, yFactor = -0.240f+0.08f, scale = 1f, alpha = 0.68f),
+            SlotPose(xFactor = 0.175f- 0.15f, yawDegrees = StackYaw, zFactor = -0.0325f + 0.2f, yFactor = -0.190f+0.08f, scale = 1f, alpha = 0.60f),
         )
 
     init {

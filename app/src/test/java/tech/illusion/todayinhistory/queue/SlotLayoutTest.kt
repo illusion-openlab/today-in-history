@@ -46,21 +46,25 @@ class SlotLayoutTest {
     }
 
     @Test
-    fun `时钟两层都在堆叠前方且更高`() {
-        val focus = SlotLayout.poseFor(0)
+    fun `时钟摆在堆叠右下且不与之重叠`() {
+        val clock = SlotLayout.clockPose
 
-        // 两层都要在堆叠之前、之上——时钟是常驻锚点，不能被卡片挡住。
-        for (layer in 0..1) {
-            val clock = SlotLayout.clockPose(layer)
-            assertTrue("第 $layer 层的 z 应在焦点卡之前", clock.zFactor > focus.zFactor)
-            assertTrue("第 $layer 层的 y 应在焦点卡之上", clock.yFactor > focus.yFactor)
-        }
-
-        // 两层之间也要有深度差，否则「立体」只是并排。
+        // 时钟是常驻锚点：卡片随推进变化，它不变。所以把它放在堆叠**之外**
+        // 的右下角，而不是叠在卡片前面——叠着的话推进时视线会被反复打断。
+        val rightmostCard = (0 until VISIBLE_SLOTS).maxOf { SlotLayout.poseFor(it).xFactor }
         assertTrue(
-            "时间层必须在日期层之前",
-            SlotLayout.clockPose(0).zFactor > SlotLayout.clockPose(1).zFactor,
+            "时钟应在所有卡片右侧（当前 ${clock.xFactor} vs 最右卡片 $rightmostCard）",
+            clock.xFactor > rightmostCard,
         )
+
+        val lowestCard = (0 until VISIBLE_SLOTS).minOf { SlotLayout.poseFor(it).yFactor }
+        assertTrue(
+            "时钟应贴近底部（当前 ${clock.yFactor} vs 最低卡片 $lowestCard）",
+            clock.yFactor <= lowestCard,
+        )
+
+        // 与堆叠共用同一偏航角，两者才像摆在同一个平面上。
+        assertEquals(SlotLayout.poseFor(0).yawDegrees, clock.yawDegrees, EPS)
     }
 
     @Test
@@ -200,8 +204,8 @@ class SlotLayoutTest {
      * 以免抢眼。scale 的约束放到下面的范围/可见性检查里。
      */
     @Test
-    fun `时钟第一层不透明`() {
-        assertEquals(1f, SlotLayout.clockPose(0).alpha, EPS)
+    fun `时钟不透明`() {
+        assertEquals(1f, SlotLayout.clockPose.alpha, EPS)
     }
 
     /**
@@ -214,9 +218,9 @@ class SlotLayoutTest {
      * 对照：槽位侧的 `scale in 0f..1f` 是真不变量（不该有卡片比焦点卡大），不要照这里放宽。
      */
     @Test
-    fun `时钟两层的因子都落在容器范围内且可见`() {
+    fun `时钟的因子落在容器范围内且可见`() {
         for (layer in 0..1) {
-            val clock = SlotLayout.clockPose(layer)
+            val clock = SlotLayout.clockPose
             assertTrue("第 $layer 层 z 越界: ${clock.zFactor}", clock.zFactor in -0.5f..0.5f)
             assertTrue("第 $layer 层 y 越界: ${clock.yFactor}", clock.yFactor in -0.5f..0.5f)
             assertTrue("第 $layer 层 x 越界: ${clock.xFactor}", clock.xFactor in -0.5f..0.5f)
@@ -225,8 +229,8 @@ class SlotLayoutTest {
         }
 
         // 越界的层号钳到最近一层，不抛异常
-        assertEquals(SlotLayout.clockPose(0), SlotLayout.clockPose(-3))
-        assertEquals(SlotLayout.clockPose(1), SlotLayout.clockPose(9))
+        assertEquals(SlotLayout.clockPose, SlotLayout.clockPose)
+        assertEquals(SlotLayout.clockPose, SlotLayout.clockPose)
     }
 
     /**

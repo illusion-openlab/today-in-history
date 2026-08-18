@@ -427,8 +427,7 @@ class HistoryQueueSystem : System() {
                 logMissingTransform("日期牌")
                 return@forEach
             }
-            val layer = entity.components[DatePanelComponent::class.java]?.layer ?: 0
-            applyPose(transform, SlotLayout.clockPose(layer), bounds)
+            applyPose(transform, SlotLayout.clockPose, bounds)
         }
     }
 
