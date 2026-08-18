@@ -11,7 +11,19 @@ data class SlotContent(val slot: Int, val entry: HistoryEntry?)
  * 这是 3D 侧到 2D 侧的**单向**通道：面板内容随快照重组，但 3D 变换永远由
  * System 直接写 TransformComponent，不经过 Compose。
  */
-data class QueueSnapshot(val slots: List<SlotContent>, val month: Int, val day: Int) {
+data class QueueSnapshot(
+    val slots: List<SlotContent>,
+    val month: Int,
+    val day: Int,
+    /**
+     * 正在向左滑出的那条；非过渡期为 null。
+     *
+     * 它已经不在 [slots] 里了——推进的那一刻就出队了——但视觉上还要再存在
+     * 一个过渡时长。放进快照而不是让 UI 去问 driver，是为了让「UI 该显示什么」
+     * 始终只有一个来源。
+     */
+    val exiting: HistoryEntry? = null,
+) {
     companion object {
         /**
          * 首次 `QueueDriver.reset` 之前的占位快照。

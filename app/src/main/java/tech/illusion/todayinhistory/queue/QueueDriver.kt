@@ -26,6 +26,9 @@ class QueueDriver(private val clock: () -> LocalDate, private val random: Random
     private var transitionSeconds = -1f
     private var transitionStep = 0
 
+    /** 正在向左滑出的那条；非过渡期为 null。见 [exitingEntry] 与 [exitPose]。 */
+    private var exitingEntry: HistoryEntry? = null
+
     var snapshot: QueueSnapshot = QueueSnapshot.EMPTY
         private set
 
@@ -38,6 +41,7 @@ class QueueDriver(private val clock: () -> LocalDate, private val random: Random
         idleSeconds = 0f
         transitionSeconds = -1f
         transitionStep = 0
+        exitingEntry = null
         publish(month, day)
     }
 
@@ -101,6 +105,9 @@ class QueueDriver(private val clock: () -> LocalDate, private val random: Random
     fun requestAdvance(step: Int) {
         if (queue.size == 0 || isTransitioning || step <= 0) return
 
+        // 推进前先记下即将离场的那条：advance() 之后它就不在快照里了，
+        // 而离场动画需要它继续显示 TRANSITION_SECONDS 秒。
+        exitingEntry = queue.entryAt(0)
         queue.advance(step)
         idleSeconds = 0f
         transitionSeconds = 0f
@@ -136,6 +143,26 @@ class QueueDriver(private val clock: () -> LocalDate, private val random: Random
         val origin = SlotLayout.poseFor(slot + transitionStep)
         val t = SlotLayout.easeOutCubic(transitionSeconds / TRANSITION_SECONDS)
         return SlotLayout.lerp(origin, target, t)
+    }
+
+    /**
+     * 正在离场的条目；非过渡期为 null。
+     *
+     * 它已经不在 [snapshot] 里了——`advance()` 把游标推走的那一刻它就出队了。
+     * 但视觉上它还要在屏幕上向左滑 [TRANSITION_SECONDS] 秒，所以由这里单独持有。
+     */
+    fun exitingEntry(): HistoryEntry? = if (isTransitioning) exitingEntry else null
+
+    /**
+     * 离场卡此刻的姿态：从 slot 0 滑向 [SlotLayout.exitPose]。
+     *
+     * 非过渡期返回 [SlotLayout.exitPose] 本身（alpha 为 0），这样离场卡在静止时
+     * 完全不可见，不需要额外的显隐开关。
+     */
+    fun exitPoseNow(): SlotPose {
+        if (!isTransitioning) return SlotLayout.exitPose
+        val t = SlotLayout.easeOutCubic(transitionSeconds / TRANSITION_SECONDS)
+        return SlotLayout.lerp(SlotLayout.poseFor(0), SlotLayout.exitPose, t)
     }
 
     /** 距下一次自动推进还剩多少秒。 */
@@ -185,6 +212,7 @@ class QueueDriver(private val clock: () -> LocalDate, private val random: Random
                 slots = (0 until VISIBLE_SLOTS).map { SlotContent(it, queue.entryAt(it)) },
                 month = month,
                 day = day,
+                exiting = exitingEntry,
             )
     }
 }

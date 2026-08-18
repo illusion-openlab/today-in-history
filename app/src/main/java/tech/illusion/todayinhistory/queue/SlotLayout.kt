@@ -10,6 +10,11 @@ package tech.illusion.todayinhistory.queue
  * @param yFactor 垂直方向占比，正值向上
  */
 data class SlotPose(
+    /**
+     * 水平方向占比，正值向右。默认 0——队列本身不用横向偏移，
+     * 它只服务于**离场动画**：卡片被推走时向左滑出。
+     */
+    val xFactor: Float = 0f,
     val zFactor: Float,
     val yFactor: Float,
     val scale: Float,
@@ -57,6 +62,15 @@ object SlotLayout {
      * 数值仍是起点：容器实测 0.8m 立方，若 Manifest 的 defaultsize 或 resizerestriction
      * 改动，需重新推导。
      */
+    /**
+     * 离场姿态：被推走的那张卡滑到的终点。
+     *
+     * 向左滑出**一整个卡片宽度**（560dp ≈ 0.22m ≈ 容器宽的 0.28）并同时透明到 0，
+     * 所以它在完全离开视野之前就已经看不见了，不会在容器边缘留下一条硬边。
+     * z 与 slot 0 相同——离场是纯粹的横向动作，不带纵深变化，否则会读成「掉下去」。
+     */
+    val exitPose = SlotPose(xFactor = -0.34f, zFactor = 0.0300f, yFactor = -0.130f, scale = 1f, alpha = 0f)
+
     private val poses =
         listOf(
             SlotPose(zFactor = 0.0300f, yFactor = -0.130f, scale = 1f, alpha = 1.00f),
@@ -96,6 +110,7 @@ object SlotLayout {
         val k = normalizeProgress(t)
         val inv = 1f - k
         return SlotPose(
+            xFactor = from.xFactor * inv + to.xFactor * k,
             zFactor = from.zFactor * inv + to.zFactor * k,
             yFactor = from.yFactor * inv + to.yFactor * k,
             scale = from.scale * inv + to.scale * k,

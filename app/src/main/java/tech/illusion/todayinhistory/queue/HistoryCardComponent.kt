@@ -39,3 +39,16 @@ class DatePanelComponent : Component() {
 
     override fun clone(): Component = DatePanelComponent()
 }
+
+/**
+ * 标记「正在离场的那张卡」。
+ *
+ * 它不属于六个槽位中的任何一个：队列推进时被推走的那条已经出队，
+ * 但视觉上还要向左滑出 [TRANSITION_SECONDS] 秒。姿态由
+ * [QueueDriver.exitPoseNow] 给出，不透明度由 `OpacityControllerComponent` 逐帧驱动
+ * （**不走 Compose 的 graphicsLayer**——那样要每帧重组，而且尺寸不变时
+ * SDK 根本不会把新像素推到空间表面）。
+ */
+class ExitCardComponent : Component() {
+    override fun clone(): Component = ExitCardComponent()
+}

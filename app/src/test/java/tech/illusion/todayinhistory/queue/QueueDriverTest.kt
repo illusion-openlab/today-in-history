@@ -3,6 +3,8 @@ package tech.illusion.todayinhistory.queue
 import java.time.LocalDate
 import kotlin.random.Random
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
@@ -642,5 +644,69 @@ class QueueDriverTest {
 
         val expected = ((start - 1 + 3) % 8) + 1
         assertEquals(expected, d.snapshot.slots[0].entry!!.year)
+    }
+
+    @Test
+    fun `离场条目是推进前的焦点条目`() {
+        val (d, _) = driver()
+        d.reset(entries(1, 2, 3, 4, 5, 6, 7, 8), 8, 17)
+        val before = d.snapshot.slots[0].entry!!.year
+
+        d.requestAdvance(1)
+
+        // 它已经不在 slots 里了，但仍需被显示一个过渡时长
+        assertEquals(before, d.exitingEntry()!!.year)
+        assertEquals(before, d.snapshot.exiting!!.year)
+        assertTrue(d.snapshot.slots.none { it.entry?.year == before })
+    }
+
+    @Test
+    fun `非过渡期没有离场条目`() {
+        val (d, _) = driver()
+        d.reset(entries(1, 2, 3, 4, 5, 6, 7, 8), 8, 17)
+
+        assertNull(d.exitingEntry())
+
+        d.requestAdvance(1)
+        d.tick(TRANSITION_SECONDS + 0.1f)
+
+        assertNull("过渡结束后离场卡必须消失", d.exitingEntry())
+    }
+
+    @Test
+    fun `离场姿态从焦点槽位滑向离场点`() {
+        val (d, _) = driver()
+        d.reset(entries(1, 2, 3, 4, 5, 6, 7, 8), 8, 17)
+
+        // 静止时压在离场点且完全透明——不需要额外的显隐开关
+        assertEquals(SlotLayout.exitPose, d.exitPoseNow())
+        assertEquals(0f, d.exitPoseNow().alpha, EPS)
+
+        d.requestAdvance(1)
+        d.tick(0f)
+        // 起点精确等于焦点槽位
+        assertEquals(SlotLayout.poseFor(0), d.exitPoseNow())
+
+        d.tick(TRANSITION_SECONDS / 2f)
+        val mid = d.exitPoseNow()
+        assertTrue("应已向左移动", mid.xFactor < SlotLayout.poseFor(0).xFactor)
+        assertTrue("应已开始变淡", mid.alpha < 1f)
+        assertTrue("不应越过离场点", mid.xFactor > SlotLayout.exitPose.xFactor)
+
+        d.tick(TRANSITION_SECONDS)
+        assertEquals(SlotLayout.exitPose, d.exitPoseNow())
+    }
+
+    @Test
+    fun `reset 清除离场条目`() {
+        val (d, _) = driver()
+        d.reset(entries(1, 2, 3, 4, 5, 6, 7, 8), 8, 17)
+        d.requestAdvance(1)
+        assertNotNull(d.exitingEntry())
+
+        d.reset(entries(9, 10, 11, 12, 13, 14, 15, 16), 8, 18)
+
+        assertNull("换天后不该还留着上一天的离场卡", d.exitingEntry())
+        assertNull(d.snapshot.exiting)
     }
 }

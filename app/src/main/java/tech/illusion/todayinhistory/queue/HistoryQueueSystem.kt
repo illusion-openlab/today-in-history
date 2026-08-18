@@ -4,6 +4,7 @@ import android.util.Log
 import com.pico.spatial.core.ecs.EntityQueryCondition
 import com.pico.spatial.core.ecs.SceneUpdateContext
 import com.pico.spatial.core.ecs.System
+import com.pico.spatial.core.ecs.OpacityControllerComponent
 import com.pico.spatial.core.ecs.TransformComponent
 import com.pico.spatial.core.math.Vector3
 import java.util.concurrent.atomic.AtomicInteger
@@ -244,6 +245,9 @@ class HistoryQueueSystem : System() {
     // EntityQueryCondition 只持有 Function1 + 两个 Set + 一个 boolean，全是 final 字段，
     // 与任何 Scene 实例无关（已用 javap 核实），所以可以安全地提成字段而不必每帧新建。
     private val cardCondition = EntityQueryCondition.hasComponent(HistoryCardComponent::class.java)
+    private val exitCondition =
+        EntityQueryCondition.hasComponent(ExitCardComponent::class.java)
+
     private val dateCondition = EntityQueryCondition.hasComponent(DatePanelComponent::class.java)
 
     override fun update(context: SceneUpdateContext) {
@@ -401,6 +405,19 @@ class HistoryQueueSystem : System() {
             applyPose(transform, driver.poseOf(card.slot), bounds)
         }
 
+        // 离场卡：位置走 exitPoseNow()，不透明度走实体级 OpacityControllerComponent。
+        // 用实体级而非 Compose alpha 的原因见 ExitCardComponent 的 KDoc。
+        scene.queryEntity(exitCondition).forEach { entity ->
+            val transform = entity.components[TransformComponent::class.java]
+            if (transform == null) {
+                logMissingTransform("离场卡")
+                return@forEach
+            }
+            val pose = driver.exitPoseNow()
+            applyPose(transform, pose, bounds)
+            entity.components[OpacityControllerComponent::class.java]?.opacity = pose.alpha
+        }
+
         // 日期牌姿态恒定，但仍然每帧写：boundsMeters 会随容器缩放变化，而 System 侧
         // 收不到任何变更通知。一个实体的写入开销可以忽略，换来「缩放后自动跟随」。
         dates.forEach { entity ->
@@ -428,7 +445,8 @@ class HistoryQueueSystem : System() {
     }
 
     private fun applyPose(transform: TransformComponent, pose: SlotPose, bounds: Vector3) {
-        transform.position = Vector3(0f, pose.yFactor * bounds.y, pose.zFactor * bounds.z)
+        transform.position =
+            Vector3(pose.xFactor * bounds.x, pose.yFactor * bounds.y, pose.zFactor * bounds.z)
         transform.scaleVector = Vector3(pose.scale, pose.scale, pose.scale)
     }
 

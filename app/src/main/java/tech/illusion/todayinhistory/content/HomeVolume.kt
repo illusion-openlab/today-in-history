@@ -30,6 +30,8 @@ import tech.illusion.todayinhistory.data.asAssetSource
 import tech.illusion.todayinhistory.panels.DatePanel
 import tech.illusion.todayinhistory.panels.HistoryCard
 import tech.illusion.todayinhistory.queue.DatePanelComponent
+import com.pico.spatial.core.ecs.OpacityControllerComponent
+import tech.illusion.todayinhistory.queue.ExitCardComponent
 import tech.illusion.todayinhistory.queue.HistoryCardComponent
 import tech.illusion.todayinhistory.queue.HistoryQueueSystem
 import tech.illusion.todayinhistory.queue.QueueDriver
@@ -38,6 +40,8 @@ import tech.illusion.todayinhistory.queue.SlotLayout
 import tech.illusion.todayinhistory.queue.VISIBLE_SLOTS
 
 private const val LOG_TAG = "HomeVolume"
+
+private const val EXIT_ATTACHMENT = "exit_card"
 
 private const val DATE_ATTACHMENT = "date_panel"
 
@@ -218,6 +222,12 @@ fun HomeVolume() {
             // 6 张卡片：槽位号挂上去之后终生不变——推进换的是槽位里的内容，
             // 不是实体与槽位的绑定。
             var attachedCards = 0
+            attachments.entity(EXIT_ATTACHMENT)?.apply {
+                components.set(ExitCardComponent())
+                components.set(OpacityControllerComponent(0f))
+                content.addEntity(this)
+            }
+
             for (slot in 0 until VISIBLE_SLOTS) {
                 attachments.entity(CARD_ATTACHMENT_IDS[slot])?.apply {
                     components.set(HistoryCardComponent().also { it.slot = slot })
@@ -248,6 +258,17 @@ fun HomeVolume() {
                 DatePanel(
                     month = if (hasData) snapshot.month else fallback.monthValue,
                     day = if (hasData) snapshot.day else fallback.dayOfMonth,
+                )
+            }
+
+            // 离场卡：承载被推走的那条，向左滑出。它不属于任何槽位，
+            // 静止时 OpacityControllerComponent 把它压到全透明，不需要额外显隐开关。
+            AttachmentPanel(id = EXIT_ATTACHMENT) {
+                HistoryCard(
+                    entry = snapshot.exiting,
+                    alpha = 1f,
+                    nudgeDp = nudgeDp,
+                    onClick = {},
                 )
             }
 
