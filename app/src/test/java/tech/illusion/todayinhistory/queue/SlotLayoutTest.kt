@@ -1,6 +1,7 @@
 package tech.illusion.todayinhistory.queue
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -63,8 +64,15 @@ class SlotLayoutTest {
             clock.yFactor <= lowestCard,
         )
 
-        // 与堆叠共用同一偏航角，两者才像摆在同一个平面上。
-        assertEquals(SlotLayout.poseFor(0).yawDegrees, clock.yawDegrees, EPS)
+        // 时钟**正对观者**（偏航 0），堆叠则是侧转的——两者刻意不同：
+        // 堆叠靠倾斜表达「一叠卡」，时钟是要被读的，正对才清楚。
+        // 这条断言锁的是这个取舍；若哪天想让时钟也跟着倾斜，改的是意图，连这条一起改。
+        assertEquals("时钟应正对观者", 0f, clock.yawDegrees, EPS)
+        assertNotEquals(
+            "堆叠不应与时钟同角度，否则「侧转的一叠」这个表达就没了",
+            0f,
+            SlotLayout.poseFor(0).yawDegrees,
+        )
     }
 
     @Test

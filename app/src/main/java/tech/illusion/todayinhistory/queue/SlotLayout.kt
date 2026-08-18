@@ -51,7 +51,7 @@ object SlotLayout {
      * 偏航角与堆叠一致，两者才像在同一个平面上摆着。
      */
     val clockPose =
-        SlotPose(xFactor = 0.320f, yawDegrees = StackYaw, zFactor = 0.200f, yFactor = -0.380f, scale = 1f, alpha = 1.00f)
+        SlotPose(xFactor = 0.320f, yawDegrees = 0f, zFactor = 0.450f, yFactor = -0.380f, scale = 1f, alpha = 1.00f)
 
     /**
      * 槽位 0 是焦点卡，1..5 是待读条。
@@ -83,37 +83,33 @@ object SlotLayout {
      * 改动，需重新推导。
      */
     /**
-     * 离场姿态：被推走的那张卡滑到的终点。
+     * 离场姿态：被推走的那张卡**原地缩小并后退**，不做横向移动。
      *
-     * 向左滑出**一整个卡片宽度**（560dp ≈ 0.22m ≈ 容器宽的 0.28），同时**缩到 0**。
+     * 早先的做法是向左滑出容器，实测被容器边界裁断，观感很差。现在 x/y 与 slot 0 相同，
+     * 只改 z 与 scale：卡片一边缩小一边退到堆叠背后（z 0.20 远小于最靠后那张的 0.3675），
+     * 被六张卡挡住，等于消失。
      *
-     * **消失靠「移出容器」，不靠缩放、也不靠 alpha。**
+     * **消失靠「缩小 + 后退」，不靠 alpha——两条不透明度通道都不通：**
+     * `OpacityControllerComponent` 对 attachment 面板不起作用（设备实测：卡片移动了
+     * 却一点没变淡）；Compose 的 graphicsLayer alpha 受制于「SDK 只在面板**测量尺寸变化**
+     * 时才推送新像素」，过渡结束后内容变空但尺寸不变，屏幕上会永远留着最后一次渲染的那张卡。
      *
-     * ⚠️ 设备实测：**`scale = 0f` 会把整个 SpatialView 的渲染全部拖垮**——六张卡、日期牌、
-     * 离场卡同时从画面消失，进程却还活着、logcat 无任何错误，且模拟器需要重启才能恢复。
-     * 极小缩放（0.02f）同样不可靠。这是最难排查的一类故障（无声、全局、非崩溃），
-     * 所以离场卡**始终保持 scale = 1**，靠把它移到容器之外（±0.5 是容器边界，
-     * -1.20 远在其外）来消失。
-     * 不透明度有两条通道，两条都不通：`OpacityControllerComponent` 对
-     * attachment 面板不起作用（设备实测：卡片滑走了但一点没变淡）；Compose 的
-     * graphicsLayer alpha 则受制于「SDK 只在面板**测量尺寸变化**时才推送新像素」——
-     * 过渡结束后内容变空但尺寸不变，屏幕上会永远留着最后一次渲染的那张卡。
-     * 而 `scaleVector` 走的是 TransformComponent 通道，与位置同源，实测可靠。
-     *
-     * z 与 slot 0 相同——离场是纯粹的横向动作，不带纵深变化，否则会读成「掉下去」。
+     * ⚠️ **scale 绝不能取 0**：设备实测 `scale = 0f` 会把整个 SpatialView 的渲染全部拖垮——
+     * 六张卡与时钟同时消失、进程存活、logcat 无任何错误，且模拟器需硬重启才能恢复。
+     * 这里取 0.05f（约 28dp 宽的一小片），既非零又小到看不出。
      */
     val exitPose =
-        SlotPose(xFactor = -1.20f, yawDegrees = StackYaw, zFactor = 0.0300f, yFactor = -0.440f, scale = 1f, alpha = 0f)
+        SlotPose(xFactor = -0.150f, yawDegrees = StackYaw, zFactor = 0.2000f, yFactor = -0.360f, scale = 0.05f, alpha = 0f)
 
 
     private val poses =
         listOf(
-            SlotPose(xFactor = 0.000f - 0.15f, yawDegrees = StackYaw, zFactor = 0.0300f + 0.2f, yFactor = -0.440f+0.08f, scale = 1f, alpha = 1.00f),
-            SlotPose(xFactor = 0.035f- 0.15f, yawDegrees = StackYaw, zFactor = 0.0175f + 0.2f, yFactor = -0.390f+0.08f, scale = 1f, alpha = 0.92f),
-            SlotPose(xFactor = 0.070f- 0.15f, yawDegrees = StackYaw, zFactor = 0.0050f + 0.2f, yFactor = -0.340f+0.08f, scale = 1f, alpha = 0.84f),
-            SlotPose(xFactor = 0.105f- 0.15f, yawDegrees = StackYaw, zFactor = -0.0075f + 0.2f, yFactor = -0.290f+0.08f, scale = 1f, alpha = 0.76f),
-            SlotPose(xFactor = 0.140f- 0.15f, yawDegrees = StackYaw, zFactor = -0.0200f + 0.2f, yFactor = -0.240f+0.08f, scale = 1f, alpha = 0.68f),
-            SlotPose(xFactor = 0.175f- 0.15f, yawDegrees = StackYaw, zFactor = -0.0325f + 0.2f, yFactor = -0.190f+0.08f, scale = 1f, alpha = 0.60f),
+            SlotPose(xFactor = -0.150f, yawDegrees = StackYaw, zFactor = 0.4300f, yFactor = -0.360f, scale = 1f, alpha = 1.00f),
+            SlotPose(xFactor = -0.115f, yawDegrees = StackYaw, zFactor = 0.4175f, yFactor = -0.310f, scale = 1f, alpha = 0.92f),
+            SlotPose(xFactor = -0.080f, yawDegrees = StackYaw, zFactor = 0.4050f, yFactor = -0.260f, scale = 1f, alpha = 0.84f),
+            SlotPose(xFactor = -0.045f, yawDegrees = StackYaw, zFactor = 0.3925f, yFactor = -0.210f, scale = 1f, alpha = 0.76f),
+            SlotPose(xFactor = -0.010f, yawDegrees = StackYaw, zFactor = 0.3800f, yFactor = -0.160f, scale = 1f, alpha = 0.68f),
+            SlotPose(xFactor = 0.025f, yawDegrees = StackYaw, zFactor = 0.3675f, yFactor = -0.110f, scale = 1f, alpha = 0.60f),
         )
 
     init {

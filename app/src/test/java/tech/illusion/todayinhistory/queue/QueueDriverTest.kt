@@ -183,10 +183,10 @@ class QueueDriverTest {
             SlotLayout.lerp(SlotLayout.poseFor(2), SlotLayout.poseFor(1), SlotLayout.easeOutCubic(0.5f))
         assertEquals(expected, d.poseOf(1))
 
-        // 非同义反复的独立核对：0.2050 * 0.125 + 0.2175 * 0.875 == 0.2159375
+        // 非同义反复的独立核对：0.4050 * 0.125 + 0.4175 * 0.875 == 0.4159375
         // （数值来自当前姿态表；改姿态表必须回来重算这一行，
         //  它是全测试里唯一不依赖 SlotLayout 自身实现的交叉验证）
-        assertEquals(0.2159375f, d.poseOf(1).zFactor, EPS)
+        assertEquals(0.4159375f, d.poseOf(1).zFactor, EPS)
     }
 
     /**
@@ -674,13 +674,12 @@ class QueueDriverTest {
     }
 
     @Test
-    fun `离场姿态从焦点槽位滑向离场点`() {
+    fun `离场姿态从焦点槽位缩小并后退`() {
         val (d, _) = driver()
         d.reset(entries(1, 2, 3, 4, 5, 6, 7, 8), 8, 17)
 
-        // 静止时压在离场点且完全透明——不需要额外的显隐开关
+        // 静止时压在离场点——已缩到极小并退到堆叠背后，不需要额外的显隐开关
         assertEquals(SlotLayout.exitPose, d.exitPoseNow())
-        assertEquals(0f, d.exitPoseNow().alpha, EPS)
 
         d.requestAdvance(1)
         d.tick(0f)
@@ -689,12 +688,27 @@ class QueueDriverTest {
 
         d.tick(TRANSITION_SECONDS / 2f)
         val mid = d.exitPoseNow()
-        assertTrue("应已向左移动", mid.xFactor < SlotLayout.poseFor(0).xFactor)
-        assertTrue("应已开始变淡", mid.alpha < 1f)
-        assertTrue("不应越过离场点", mid.xFactor > SlotLayout.exitPose.xFactor)
+        val focus = SlotLayout.poseFor(0)
+        assertTrue("应已开始缩小", mid.scale < focus.scale)
+        assertTrue("应已开始后退", mid.zFactor < focus.zFactor)
+        assertTrue("不应缩过头", mid.scale > SlotLayout.exitPose.scale)
+        // 离场是原地动作：横向与纵向都不该动，否则会被容器边界裁断
+        assertEquals("离场不应横向移动", focus.xFactor, mid.xFactor, EPS)
+        assertEquals("离场不应纵向移动", focus.yFactor, mid.yFactor, EPS)
 
         d.tick(TRANSITION_SECONDS)
         assertEquals(SlotLayout.exitPose, d.exitPoseNow())
+    }
+
+    @Test
+    fun `离场终点缩到极小但绝不为零`() {
+        // scale = 0f 会让整个 SpatialView 停止渲染（设备实测，且需硬重启模拟器恢复）。
+        // 这条断言就是那次事故的护栏。
+        assertTrue("离场 scale 必须为正", SlotLayout.exitPose.scale > 0f)
+        assertTrue("离场 scale 应小到看不出", SlotLayout.exitPose.scale < 0.1f)
+        // 退到最靠后那张卡之后，被堆叠遮住
+        val backmost = (0 until VISIBLE_SLOTS).minOf { SlotLayout.poseFor(it).zFactor }
+        assertTrue("离场应退到堆叠背后", SlotLayout.exitPose.zFactor < backmost)
     }
 
     @Test
