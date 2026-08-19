@@ -5,6 +5,7 @@ import com.pico.spatial.core.container.SpatialViewContent
 import com.pico.spatial.core.ecs.Entity
 import com.pico.spatial.core.ecs.TransformComponent
 import com.pico.spatial.core.ecs.event.AnimationEvents
+import com.pico.spatial.core.math.EulerAngles
 import com.pico.spatial.core.math.Vector3
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -26,10 +27,21 @@ private const val Y_FACTOR = -0.500f
 private const val Z_FACTOR = 0.150f
 
 /**
+ * 朝向（度）。绕的是**世界轴**，施加顺序为 roll(Z) → pitch(X) → yaw(Y)，
+ * 所以三个都非零时不能按「先后独立调」来想，改一个会影响另两个的观感。
+ *
+ * 摆件通常只需要 [YAW_DEGREES]：让植物原地水平转个方向，换一面朝向观者。
+ * 卡片堆用的是同一个量（`SlotLayout` 里的 `StackYaw = 14f`），可以对照着取值。
+ */
+private const val PITCH_DEGREES = 0f
+private const val YAW_DEGREES = 90f
+private const val ROLL_DEGREES = 0f
+
+/**
  * 期望的成品高度（米）。模型自身的建模单位不可知，所以不写死 scale，
  * 而是加载后量一次包围盒再反推缩放系数——换模型也不用重新试数。
  */
-private const val TARGET_HEIGHT_METERS = 0.34f
+private const val TARGET_HEIGHT_METERS = 0.2f
 
 /** 量出来的高度若小于这个值，视为包围盒尚未就绪，放弃自动缩放以免除出天文数字。 */
 private const val MIN_VALID_HEIGHT = 1e-4f
@@ -84,10 +96,13 @@ suspend fun loadPlantDecor(
 
     transform.position = Vector3(X_FACTOR * bounds.x, Y_FACTOR * bounds.y, Z_FACTOR * bounds.z)
     transform.scaleVector = Vector3(scale, scale, scale)
+    transform.eulerAngles =
+        EulerAngles(pitch = PITCH_DEGREES, yaw = YAW_DEGREES, roll = ROLL_DEGREES)
 
     Log.i(
         LOG_TAG,
-        "植物就位：原始尺寸=$measured 缩放=$scale 位置=${transform.position}",
+        "植物就位：原始尺寸=$measured 缩放=$scale 位置=${transform.position} " +
+            "朝向=${transform.eulerAngles}",
     )
 
     playIdleLooping(content, plant)
