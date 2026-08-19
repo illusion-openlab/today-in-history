@@ -406,9 +406,21 @@ class HistoryQueueSystem : System() {
             applyPose(transform, driver.poseOf(card.slot), bounds)
         }
 
-        // 离场卡：位置走 exitPoseNow()，不透明度走实体级 OpacityControllerComponent。
-        // 用实体级而非 Compose alpha 的原因见 ExitCardComponent 的 KDoc。
+        // 离场卡：**显隐靠 `enabled`，不是靠 alpha**。
+        //
+        // 这里原先只写 OpacityControllerComponent.opacity = pose.alpha，指望静止时
+        // alpha=0 把它藏起来。设备实测该组件对 attachment 面板不起作用，卡片并不会透明；
+        // 而 exitPose 的 scale 又不能取 0（scale=0 会让整个 SpatialView 停止渲染，
+        // 见 SlotLayout 中的警告），只能取 0.05——于是过渡结束后，远处始终挂着一张
+        // 缩小的卡片不消失。用实体级 enabled 才真正藏得住。
+        //
+        // opacity 那行予以保留：当前无效但零成本，SDK 若修好该行为即可自动获得淡出。
+        val exiting = driver.isTransitioning
         scene.queryEntity(exitCondition).forEach { entity ->
+            if (entity.enabled != exiting) entity.enabled = exiting
+            // 不在过渡中就没必要再写姿态——它已经不可见了。
+            if (!exiting) return@forEach
+
             val transform = entity.components[TransformComponent::class.java]
             if (transform == null) {
                 logMissingTransform("离场卡")

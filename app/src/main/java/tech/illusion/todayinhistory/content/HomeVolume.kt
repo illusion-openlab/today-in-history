@@ -286,8 +286,9 @@ fun HomeVolume() {
                 )
             }
 
-            // 离场卡：承载被推走的那条，向左滑出。它不属于任何槽位，
-            // 静止时 OpacityControllerComponent 把它压到全透明，不需要额外显隐开关。
+            // 离场卡：承载被推走的那条，缩小上移离场。它不属于任何槽位。
+            // 静止时由 HistoryQueueSystem 把实体 enabled 置 false 来隐藏——
+            // OpacityControllerComponent 对 attachment 面板实测无效，压不住它。
             AttachmentPanel(id = EXIT_ATTACHMENT) {
                 HistoryCard(
                     entry = snapshot.exiting,
