@@ -1,7 +1,15 @@
 package tech.illusion.todayinhistory.queue
 
 import android.util.Log
+import com.pico.spatial.core.ecs.Entity
 import com.pico.spatial.core.ecs.EntityQueryCondition
+import com.pico.spatial.core.ecs.ModelComponent
+import com.pico.spatial.core.ecs.animation.AnimationBindTarget
+import com.pico.spatial.core.ecs.animation.AnimationPlayConfig
+import com.pico.spatial.core.ecs.resource.AnimationResource
+import com.pico.spatial.core.ecs.animation.AnimationTransitionMode
+import com.pico.spatial.core.ecs.animation.EaseType
+import com.pico.spatial.core.ecs.animation.TweenAnimation
 import com.pico.spatial.core.ecs.SceneUpdateContext
 import com.pico.spatial.core.ecs.System
 import com.pico.spatial.core.math.EulerAngles
@@ -243,6 +251,11 @@ class HistoryQueueSystem : System() {
     private var loggedCardCount = -1
     private var loggedDateCount = -1
 
+    /** 本轮离场 tween 是否已经起过；见 applyPoses 里的上升沿判断。 */
+    private var exitTweenStarted = false
+    private var exitTweenResources: List<AnimationResource> = emptyList()
+    private var loggedExitMaterial = false
+
     // EntityQueryCondition 只持有 Function1 + 两个 Set + 一个 boolean，全是 final 字段，
     // 与任何 Scene 实例无关（已用 javap 核实），所以可以安全地提成字段而不必每帧新建。
     private val cardCondition = EntityQueryCondition.hasComponent(HistoryCardComponent::class.java)
@@ -418,17 +431,29 @@ class HistoryQueueSystem : System() {
         val exiting = driver.isTransitioning
         scene.queryEntity(exitCondition).forEach { entity ->
             if (entity.enabled != exiting) entity.enabled = exiting
-            // 不在过渡中就没必要再写姿态——它已经不可见了。
-            if (!exiting) return@forEach
+            if (!exiting) {
+                releaseExitTween()
+                return@forEach
+            }
 
             val transform = entity.components[TransformComponent::class.java]
             if (transform == null) {
                 logMissingTransform("离场卡")
                 return@forEach
             }
-            val pose = driver.exitPoseNow()
-            applyPose(transform, pose, bounds)
-            entity.components[OpacityControllerComponent::class.java]?.opacity = pose.alpha
+
+            // 只在过渡开始的那一帧做事：写起始姿态 + 把动画交给 SDK。
+            // 之后**不再逐帧写 transform**——那正是真机上「一顿一顿」的来源：
+            // update() 实测只有 1~2 Hz，逐帧插值到了屏幕上就是每秒一两跳。
+            // 交给 tween 之后由合成器按自己的帧率插值，与本 System 的频率无关。
+            if (!exitTweenStarted) {
+                exitTweenStarted = true
+                applyPose(transform, SlotLayout.poseFor(0), bounds)
+                startExitTween(entity, bounds)
+                logExitMaterialOnce(entity)
+            }
+            entity.components[OpacityControllerComponent::class.java]?.opacity =
+                SlotLayout.exitPose.alpha
         }
 
         // 日期牌姿态恒定，但仍然每帧写：boundsMeters 会随容器缩放变化，而 System 侧
@@ -455,6 +480,71 @@ class HistoryQueueSystem : System() {
         loggedCardCount = cardCount
         loggedDateCount = dateCount
         Log.i(LOG_TAG, "查询命中：卡片=$cardCount，日期牌=$dateCount")
+    }
+
+    /**
+     * 把离场动画交给 SDK 的 tween 系统。
+     *
+     * 位置与缩放各起一条：`bindTransform()` 需要构造完整 [Transform]，而这里只想动
+     * 这两项。两条并存靠 [AnimationTransitionMode.COMPOSE]——文档写明该模式下
+     * 「新动画的加入不影响当前动画」，默认的 CROSSFADE 会让后играть的那条顶掉前一条。
+     *
+     * 时长与缓动刻意与 [SlotLayout.easeOutCubic] / [TRANSITION_SECONDS] 对齐，
+     * 保证与卡片推进的观感一致。
+     */
+    private fun startExitTween(entity: Entity, bounds: Vector3) {
+        val from = SlotLayout.poseFor(0)
+        val to = SlotLayout.exitPose
+        val config = AnimationPlayConfig(transitionMode = AnimationTransitionMode.COMPOSE)
+
+        val move =
+            TweenAnimation.createTweenAnimation(
+                bindTarget = AnimationBindTarget.bindPosition(),
+                from = Vector3(from.xFactor * bounds.x, from.yFactor * bounds.y, from.zFactor * bounds.z),
+                to = Vector3(to.xFactor * bounds.x, to.yFactor * bounds.y, to.zFactor * bounds.z),
+                duration = TRANSITION_SECONDS,
+                easeType = EaseType.EASE_OUT_CUBIC,
+            )
+        val shrink =
+            TweenAnimation.createTweenAnimation(
+                bindTarget = AnimationBindTarget.bindScale(),
+                from = Vector3(from.scale, from.scale, from.scale),
+                to = Vector3(to.scale, to.scale, to.scale),
+                duration = TRANSITION_SECONDS,
+                easeType = EaseType.EASE_OUT_CUBIC,
+            )
+
+        exitTweenResources =
+            listOf(
+                AnimationResource.generateWithTweenAnimation(move),
+                AnimationResource.generateWithTweenAnimation(shrink),
+            )
+        exitTweenResources.forEach { entity.playAnimation(it, config) }
+    }
+
+    /** 过渡结束后关掉这一轮的 tween 资源。tween 资源每次重播都要重新生成，不能复用。 */
+    private fun releaseExitTween() {
+        if (!exitTweenStarted) return
+        exitTweenStarted = false
+        exitTweenResources.forEach { it.close() }
+        exitTweenResources = emptyList()
+    }
+
+    /**
+     * 一次性记录离场面板到底有没有可做透明度动画的材质。
+     *
+     * 「离场改成渐隐」这条路要求实体上有 [ModelComponent] 且材质是 PBR
+     * （SDK 示例的 `bindMaterial(0, MaterialTarget.OPACITY)` 走的就是这条），
+     * 而 attachment 面板并非模型。这条日志是给这个判断留证据，不是调试残留。
+     */
+    private fun logExitMaterialOnce(entity: Entity) {
+        if (loggedExitMaterial) return
+        loggedExitMaterial = true
+        val model = entity.components[ModelComponent::class.java]
+        Log.i(
+            LOG_TAG,
+            "离场卡材质探测：ModelComponent=${model != null} 材质数=${model?.materials?.size ?: 0}",
+        )
     }
 
     private fun applyPose(transform: TransformComponent, pose: SlotPose, bounds: Vector3) {

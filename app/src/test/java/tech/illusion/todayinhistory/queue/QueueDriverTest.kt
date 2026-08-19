@@ -183,10 +183,10 @@ class QueueDriverTest {
             SlotLayout.lerp(SlotLayout.poseFor(2), SlotLayout.poseFor(1), SlotLayout.easeOutCubic(0.5f))
         assertEquals(expected, d.poseOf(1))
 
-        // 非同义反复的独立核对：0.4050 * 0.125 + 0.4175 * 0.875 == 0.4159375
+        // 非同义反复的独立核对：0.2900 * 0.125 + 0.3600 * 0.875 == 0.35125
         // （数值来自当前姿态表；改姿态表必须回来重算这一行，
         //  它是全测试里唯一不依赖 SlotLayout 自身实现的交叉验证）
-        assertEquals(0.4159375f, d.poseOf(1).zFactor, EPS)
+        assertEquals(0.35125f, d.poseOf(1).zFactor, EPS)
     }
 
     /**
