@@ -25,3 +25,10 @@ __pycache__/
 # 机器相关的 IDE 状态
 /.idea/deploymentTargetSelector.xml
 /.idea/deviceManager.xml
+
+# 签名与发布产物 —— 公开仓库绝不能收录
+*.jks
+*.keystore
+/app/release/
+*.apk
+*.aab
