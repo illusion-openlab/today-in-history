@@ -255,6 +255,20 @@ fun HomeVolume() {
             debugLog {
                 "attachment 实体：日期牌=${dateEntity != null}，卡片=$attachedCards/$VISIBLE_SLOTS"
             }
+
+            // 时钟面板身后的植物摆件。异步加载：模型 15MB，同步会卡住主线程。
+            // 传 lambda 而不是当前包围盒——此刻 onSizeChanged 可能还没跑，见 loadPlantDecor 注释。
+            scope.launch {
+                try {
+                    loadPlantDecor(content) { QueueHost.boundsMeters }
+                } catch (cancel: CancellationException) {
+                    throw cancel
+                } catch (t: Throwable) {
+                    // 与下方装载协程同一个 scope，同样**绝不重抛**：
+                    // 重抛会取消这个普通子 Job，之后每一次 scope.launch 都变成空转。
+                    Log.w(LOG_TAG, "植物摆件装载异常", t)
+                }
+            }
         },
         attachments = {
             AttachmentPanel(id = CLOCK_ATTACHMENT) {
