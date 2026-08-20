@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Regenerate the PICO layered app-icon resources from the master cutout.
 
-Input : docs/logo-source-cutout.png  (1536x1536 RGBA, background already matted
-        out, ground shadow removed, glyph corrected)
+Input : docs/logo-source-cutout.png
+        方形 RGBA，主体已抠好、背景透明、不带落地投影。**由设计侧提供**，
+        本脚本不做抠图。换 logo 时替换该文件后重跑即可。
 Output: app/src/main/res/drawable/icon_3d_layer_{0,1}.png
         app/src/main/res/drawable/icon_3d_sdf_{0,1}.png
         app/src/main/res/mipmap-xxxhdpi/ic_spatial_launcher.png
@@ -23,7 +24,7 @@ from PIL import Image
 
 N = 1024
 SDF_SLOPE = 8.0
-MOTIF_HEIGHT = 580                      # keeps the buffer area the spec asks for
+MOTIF_HEIGHT = 620                      # 主体高度；半对角线需 < 505 才不出内切圆
 STORE_ICON_SIZE = 720                   # 后台硬限制：380 <= 宽 <= 760，超出会被静默丢弃
 # 取自设计稿本身的背景渐变，保证图标与商店素材同色系。
 BG_TOP_LEFT = (51, 59, 82)
