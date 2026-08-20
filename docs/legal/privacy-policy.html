@@ -3,157 +3,189 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>隐私政策 · 历史上的今天</title>
+<title>历史上的今天 隐私政策</title>
 <style>
   :root {
-    --ink: #1c2333;
-    --muted: #5b6478;
-    --line: #e3e7ef;
-    --accent: #33415c;
-    --bg: #ffffff;
-    --card: #f6f8fc;
+    --ink:#1c2333; --muted:#5b6478; --line:#e3e7ef;
+    --accent:#33415c; --bg:#ffffff; --card:#f6f8fc; --note:#fff8e6; --noteline:#e8d9a8;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --ink: #e8ecf4; --muted: #a3adc2; --line: #2b3346;
-      --accent: #9db4e0; --bg: #141824; --card: #1c2231;
+      --ink:#e8ecf4; --muted:#a3adc2; --line:#2b3346;
+      --accent:#9db4e0; --bg:#141824; --card:#1c2231; --note:#2a2519; --noteline:#4a4128;
     }
   }
-  * { box-sizing: border-box; }
+  * { box-sizing:border-box; }
   body {
-    margin: 0; padding: 40px 20px 80px;
-    background: var(--bg); color: var(--ink);
-    font: 16px/1.85 -apple-system, BlinkMacSystemFont, "PingFang SC",
-          "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-    -webkit-font-smoothing: antialiased;
+    margin:0; padding:40px 20px 80px; background:var(--bg); color:var(--ink);
+    font:16px/1.85 -apple-system, BlinkMacSystemFont, "PingFang SC",
+         "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    -webkit-font-smoothing:antialiased;
   }
-  main { max-width: 720px; margin: 0 auto; }
-  h1 { font-size: 28px; line-height: 1.4; margin: 0 0 8px; letter-spacing: .01em; }
-  h2 {
-    font-size: 19px; margin: 44px 0 14px; padding-top: 22px;
-    border-top: 1px solid var(--line);
+  main { max-width:740px; margin:0 auto; }
+  h1 { font-size:27px; line-height:1.45; margin:0 0 18px; }
+  h2 { font-size:19px; margin:46px 0 14px; padding-top:22px; border-top:1px solid var(--line); }
+  h3 { font-size:16px; margin:28px 0 10px; color:var(--accent); }
+  .meta { color:var(--muted); font-size:14px; line-height:2; margin-bottom:28px; }
+  .lead { background:var(--card); border-radius:12px; padding:20px 24px; margin:0 0 8px; }
+  .lead strong { font-size:17px; }
+  .note {
+    background:var(--note); border:1px solid var(--noteline);
+    border-radius:10px; padding:16px 20px; margin:22px 0; font-size:15px;
   }
-  .meta { color: var(--muted); font-size: 14px; line-height: 2; margin-bottom: 32px; }
-  .lead {
-    background: var(--card); border-radius: 12px;
-    padding: 20px 24px; margin: 0 0 8px;
-  }
-  .lead strong { font-size: 17px; }
-  p { margin: 14px 0; }
-  ul { padding-left: 22px; }
-  li { margin: 7px 0; }
+  p { margin:14px 0; }
+  ul { padding-left:22px; } li { margin:7px 0; }
+  table { border-collapse:collapse; width:100%; margin:18px 0; font-size:15px; }
+  th, td { border:1px solid var(--line); padding:10px 14px; text-align:left; }
+  th { background:var(--card); font-weight:600; }
   code {
-    background: var(--card); padding: 2px 6px; border-radius: 5px;
-    font-size: 14px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    word-break: break-all;
+    background:var(--card); padding:2px 6px; border-radius:5px; font-size:14px;
+    font-family:ui-monospace, SFMono-Regular, Menlo, monospace; word-break:break-all;
   }
-  pre {
-    background: var(--card); padding: 14px 16px; border-radius: 10px;
-    overflow-x: auto; font-size: 14px;
-  }
-  pre code { background: none; padding: 0; }
-  a { color: var(--accent); }
-  footer {
-    margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line);
-    color: var(--muted); font-size: 14px;
-  }
+  pre { background:var(--card); padding:14px 16px; border-radius:10px; overflow-x:auto; font-size:14px; }
+  pre code { background:none; padding:0; }
+  a { color:var(--accent); }
+  footer { margin-top:56px; padding-top:20px; border-top:1px solid var(--line); color:var(--muted); font-size:14px; }
 </style>
 </head>
 <body>
 <main>
 
-<h1>隐私政策 · 历史上的今天</h1>
+<h1>历史上的今天 隐私政策</h1>
+
+<p>本隐私政策是深圳市科斯莫西科技有限公司（以下简称“我们”）就为了向您提供「历史上的今天」
+及相关服务（以下统称“本服务”）而处理您的个人信息所制定。希望您在使用本服务前仔细阅读
+并理解本隐私政策，以便做出适当的选择。</p>
+
 <div class="meta">
   应用名称：历史上的今天<br>
   包名：<code>tech.illusion.todayinhistory</code><br>
-  开发者：深圳市科斯莫西科技有限公司<br>
   生效日期：2026-08-20 ｜ 最近更新：2026-08-20
 </div>
 
 <div class="lead">
-  <strong>一句话结论：本应用不收集、不存储、不上传你的任何信息。</strong>
-  <p style="margin-bottom:0">它没有联网能力。全部内容随安装包分发，运行时不与任何服务器通信，
-  也不在你的设备上写入任何文件。</p>
+  <strong>开宗明义：本应用不收集、不存储、不上传您的任何个人信息。</strong>
+  <p style="margin-bottom:0">它没有网络权限，在技术上无法联网；也不在您的设备上写入任何文件。
+  下文第一节与第二节给出了您可以自行核验这一点的具体方法。</p>
 </div>
 
-<h2>一、我们收集哪些信息</h2>
-<p>不收集任何信息。具体包括但不限于：</p>
+<h2>一、我们收集的个人信息</h2>
+<p><strong>我们不收集任何个人信息。</strong></p>
+<p>具体而言，本应用不收集以下任何一类信息：</p>
 <ul>
-  <li>不收集个人身份信息（姓名、手机号、邮箱、身份证件等）</li>
-  <li>不收集设备标识（IMEI、Android ID、OAID、MAC 地址等）</li>
-  <li>不收集位置信息</li>
-  <li>不收集使用行为、点击记录、停留时长</li>
-  <li>不收集头显的空间数据、房间结构、手部或眼动数据</li>
-  <li>不使用 Cookie 或同类技术</li>
+  <li>个人身份信息（姓名、手机号、电子邮箱、身份证件号码等）</li>
+  <li>设备标识信息（IMEI、Android ID、OAID、MAC 地址、序列号等）</li>
+  <li>位置信息（精确或模糊）</li>
+  <li>使用行为信息（点击记录、浏览记录、停留时长、崩溃日志等）</li>
+  <li>头显相关信息（房间空间结构、手部姿态、眼动、面部数据等）</li>
+  <li>通讯录、短信、通话记录、相册等设备内容</li>
+  <li>本应用不使用 Cookie 或任何同类追踪技术</li>
 </ul>
 
-<h2>二、为什么可以这样承诺</h2>
-<p>以下每一条都可以由你自行核验，不需要相信我们的说法。</p>
+<h3>您可以如何自行核验</h3>
+<p>以下每一条都不需要您相信我们的陈述，均可独立验证。</p>
 
-<p><strong>1. 应用没有网络权限，因此在技术上无法联网。</strong></p>
-<p><code>AndroidManifest.xml</code> 中没有声明任何权限，其中包括
-<code>android.permission.INTERNET</code>。Android 系统层面会阻止未申请该权限的应用
-发起网络请求。你可以这样核实：</p>
-<pre><code>aapt2 dump badging app-release.apk | grep uses-permission</code></pre>
-<p>输出中只会出现一条 <code>...DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION</code>。
-那是 Android 构建工具为组件间通信自动生成的内部权限，与网络、存储、位置均无关，
-也不会向你申请授权。</p>
+<p><strong>1. 应用没有网络权限，因此在技术上无法发起任何网络请求。</strong></p>
+<p><code>AndroidManifest.xml</code> 中未声明任何权限，其中包括
+<code>android.permission.INTERNET</code>。Android 系统会阻止未申请该权限的应用访问网络。
+您可以这样核实：</p>
+<pre><code>aapt2 dump badging today-in-history.apk | grep uses-permission</code></pre>
 
-<p><strong>2. 应用不向设备写入任何数据。</strong></p>
-<p>代码中不存在 <code>SharedPreferences</code>、文件写入、数据库或 DataStore 的调用。
-关闭应用后不留下任何痕迹；每次打开都是全新状态。</p>
+<p><strong>2. 应用不向您的设备写入任何数据。</strong></p>
+<p>源代码中不存在 <code>SharedPreferences</code>、文件写入、数据库或 DataStore 的任何调用。
+关闭应用后不留下任何痕迹，每次打开都是全新状态。</p>
 
-<p><strong>3. 应用不集成任何第三方 SDK。</strong></p>
+<p><strong>3. 应用未集成任何第三方 SDK。</strong></p>
 <p>依赖仅有 AndroidX 基础库与 PICO Spatial SDK（渲染与空间交互所必需）。
 不含统计分析、广告、崩溃上报、推送等任何会收集信息的组件。</p>
 
 <p><strong>4. 全部源代码公开。</strong></p>
-<p>本应用的完整源代码托管于 GitHub，你可以逐行查阅，也可以自行构建对比。</p>
+<p>源代码托管于 <a href="https://github.com/illusion-openlab/today-in-history">GitHub</a>，
+您可以逐行查阅，也可以自行构建并与发布版本对比。</p>
 
-<h2>三、应用中的历史内容从何而来</h2>
-<p>应用内的历史条目共 54,018 条，覆盖全年 366 天，<strong>全部随安装包一同分发</strong>，
-不是从网络拉取的。</p>
-<p>内容来自<strong>中文维基百科</strong>，采用
-<a href="https://creativecommons.org/licenses/by-sa/4.0/deed.zh">CC BY-SA 4.0</a> 授权，
-经开源项目 <a href="https://github.com/LuoH-AN/TodayInHistory">LuoH-AN/TodayInHistory</a>（MIT）
-整理后使用。</p>
-<p>这些内容是公开的历史资料，不涉及任何用户个人信息。</p>
+<h2>二、权限情况</h2>
+<p><strong>本应用未申请任何设备权限。</strong></p>
+<table>
+  <thead><tr><th>权限名称</th><th>权限功能说明</th><th>使用场景或目的</th></tr></thead>
+  <tbody><tr><td>无</td><td>本应用未申请任何需要您授权的设备权限</td><td>不适用</td></tr></tbody>
+</table>
+<p>您在安装和使用本应用的过程中，不会收到任何权限授权弹窗。</p>
 
-<h2>四、我们不会做的事</h2>
-<p>由于我们不掌握任何用户信息，因此也不存在下列情形：</p>
+<div class="note">
+  <strong>关于一条自动生成的内部权限的说明</strong>
+  <p style="margin-bottom:0">使用 <code>aapt2</code> 检视安装包时，您会看到一条
+  <code>tech.illusion.todayinhistory.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION</code>。
+  这是 Android 构建工具为应用<strong>自身组件间通信</strong>自动添加的内部权限，属于系统机制，
+  与网络、存储、位置、摄像头、麦克风等均无关，不会向您申请授权，
+  也不会使本应用获得任何访问您信息的能力。</p>
+</div>
+
+<h2>三、个人信息的使用</h2>
+<p>由于我们不收集任何个人信息，<strong>不存在对您个人信息的任何使用行为</strong>。</p>
+<p>我们不会将任何信息用于用户画像、个性化推荐、定向广告或算法决策。</p>
+<p>如本应用未来的版本发生功能变化，导致确有必要收集个人信息，我们将在该变更<strong>生效前</strong>
+更新本政策，通过应用商店的版本更新说明告知您，并在应用内以显著方式征得您的同意。</p>
+
+<h2>四、共享和公开披露个人信息</h2>
+<p>我们承诺，不会主动共享或转让您的个人信息至任何第三方。由于我们不掌握任何个人信息，
+实际上也不存在可供共享或转让的对象。</p>
+<p><strong>本应用未接入任何第三方提供的开发者工具包（SDK）。</strong>
+因此不存在任何第三方通过本应用收集您信息的情形。</p>
+<p>我们承诺，不会对外公开披露您的个人信息。</p>
+
+<h2>五、个人信息的存储</h2>
+<p><strong>本应用不收集、不存储任何个人信息，因此不存在个人信息的存储地点与存储期限问题。</strong></p>
+<p>为免歧义，另作如下说明：</p>
 <ul>
-  <li>不向任何第三方共享、转让、公开披露信息</li>
-  <li>不将信息用于广告、画像或推荐</li>
-  <li>不存在跨境传输</li>
-  <li>不存在数据泄露风险（没有数据可供泄露）</li>
+  <li>本应用的全部功能均在您的头显设备<strong>本地</strong>完成，不涉及任何服务器。</li>
+  <li>我们在中华人民共和国境内运营，且不存在任何个人信息的跨境传输。</li>
+  <li>应用内的历史条目数据随安装包一同分发，存放于应用自身的安装目录内，
+      属于应用的只读资源，不含任何用户信息。</li>
+  <li>卸载本应用即可移除其在您设备上的一切存在，不会有残留数据。</li>
 </ul>
 
-<h2>五、你的权利</h2>
-<p>个人信息保护相关法律赋予你查阅、复制、更正、删除个人信息以及注销账号的权利。</p>
-<p><strong>本应用不收集任何个人信息，也没有账号体系</strong>，因此没有可供查阅、更正或
-删除的数据。若你希望确认这一点，可通过第七节的方式联系我们，我们会协助你完成核验。</p>
-<p>如需彻底移除本应用在设备上的一切存在，直接卸载即可，不会有残留数据。</p>
+<h2>六、您的权益</h2>
+<p>依据《中华人民共和国个人信息保护法》等法律法规，您享有对个人信息的查阅、复制、更正、
+补充、删除，以及改变或撤回授权范围、注销账号等权利。</p>
+<p><strong>本应用不收集任何个人信息，也不设账号体系</strong>，因此在本应用中不存在可供查阅、
+复制、更正、补充或删除的个人信息，也不存在需要注销的账号。</p>
+<p>如您希望核实这一情况，或希望我们协助您确认本应用未持有您的任何信息，
+可通过以下方式与我们联系：</p>
+<ul><li><strong>电子邮箱</strong>：<a href="mailto:hello@story.app">hello@story.app</a></li></ul>
+<p>我们将在收到您的请求之日起 <strong>15 个工作日</strong>内予以回复。</p>
 
-<h2>六、未成年人</h2>
-<p>本应用不面向特定年龄群体，内容为公开历史资料。由于不收集任何信息，
-不涉及对未成年人个人信息的处理。</p>
-
-<h2>七、联系我们</h2>
-<p>如你对本政策有任何疑问、意见或投诉：</p>
+<h2>七、投诉与反馈</h2>
+<p>若您对我们遵守本隐私政策有任何意见，或您认为您的个人信息权利可能受到侵害，或者发现
+侵害个人信息权利的线索，或有其他的投诉建议，或关于未成年人个人信息保护相关或其他
+个人信息保护的问题，您可以通过以下方式与我们联系：</p>
 <ul>
   <li><strong>公司名称</strong>：深圳市科斯莫西科技有限公司</li>
   <li><strong>电子邮箱</strong>：<a href="mailto:hello@story.app">hello@story.app</a></li>
 </ul>
-<p>我们将在收到之日起 <strong>15 个工作日</strong>内回复。</p>
+<p>我们将在收到您的报告或投诉之日起 <strong>15 个工作日</strong>内予以回复。</p>
 
-<h2>八、政策更新</h2>
-<p>若应用的行为发生变化（例如未来版本增加了联网功能），我们会在变更<strong>生效前</strong>
-更新本政策，并同步更新页首的「最近更新」日期。</p>
-<p>本政策的历史版本可通过本仓库的提交记录完整追溯。</p>
+<h2>八、其他</h2>
+
+<h3>关于未成年人</h3>
+<p>本应用不面向特定年龄群体，内容为公开的历史资料。由于本应用不收集任何信息，
+不涉及对未成年人个人信息的处理。</p>
+
+<h3>关于应用内的历史内容</h3>
+<p>应用内共 54,018 条历史条目，覆盖全年 366 天，<strong>全部随安装包一同分发</strong>，
+并非从网络获取。</p>
+<p>内容来自<strong>中文维基百科</strong>，采用
+<a href="https://creativecommons.org/licenses/by-sa/4.0/deed.zh">CC BY-SA 4.0</a> 授权，
+经开源项目 <a href="https://github.com/LuoH-AN/TodayInHistory">LuoH-AN/TodayInHistory</a>（MIT 授权）
+整理后使用。这些内容为公开的历史资料，不涉及任何用户个人信息。</p>
+
+<h3>本政策的更新</h3>
+<p>若本应用的行为发生变化，我们会在变更<strong>生效前</strong>更新本政策，
+并同步更新页首的「最近更新」日期。本政策的全部历史版本可通过本仓库的提交记录完整追溯。</p>
 
 <footer>
-  本页对应的源文件位于仓库 <code>docs/legal/privacy-policy.html</code>，
-  与应用行为的一致性可通过源代码核对。
+  本页源文件位于
+  <a href="https://github.com/illusion-openlab/today-in-history/blob/main/docs/legal/privacy-policy.html">docs/legal/privacy-policy.html</a>，
+  其与应用实际行为的一致性可通过公开源代码逐条核对。
 </footer>
 
 </main>
