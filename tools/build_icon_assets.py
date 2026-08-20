@@ -23,9 +23,11 @@ from PIL import Image
 
 N = 1024
 SDF_SLOPE = 8.0
-MOTIF_HEIGHT = 560                      # keeps the buffer area the spec asks for
-BG_TOP_LEFT = (0x3B, 0x4E, 0x7A)
-BG_BOTTOM_RIGHT = (0x1B, 0x23, 0x38)
+MOTIF_HEIGHT = 580                      # keeps the buffer area the spec asks for
+STORE_ICON_SIZE = 720                   # 后台硬限制：380 <= 宽 <= 760，超出会被静默丢弃
+# 取自设计稿本身的背景渐变，保证图标与商店素材同色系。
+BG_TOP_LEFT = (51, 59, 82)
+BG_BOTTOM_RIGHT = (25, 30, 49)
 
 SRC = 'docs/logo-source-cutout.png'
 DRAWABLE = 'app/src/main/res/drawable/'
@@ -94,6 +96,11 @@ def main():
                      (MIPMAP + 'ic_spatial_launcher.png', launcher)]:
         im.save(path)
         print('wrote', path)
+
+    # 商店用图标：方形、不透明，宽度必须落在 380~760 之间。
+    store = launcher.convert('RGB').resize((STORE_ICON_SIZE, STORE_ICON_SIZE), Image.LANCZOS)
+    store.save('docs/store/icon_store_720.png')
+    print('wrote docs/store/icon_store_720.png', store.size)
 
 
 if __name__ == '__main__':
