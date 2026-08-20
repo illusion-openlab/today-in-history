@@ -52,6 +52,27 @@ pico-cli app install app/build/outputs/apk/debug/app-debug.apk
 pico-cli app launch tech.illusion.todayinhistory
 ```
 
+### 打签名包
+
+在 `local.properties`（**不进版本库**）中补上四行，指向你自己的 keystore：
+
+```properties
+RELEASE_STORE_FILE=/绝对路径/your-keystore.jks
+RELEASE_STORE_PASSWORD=你的密码
+RELEASE_KEY_ALIAS=你的别名
+RELEASE_KEY_PASSWORD=你的密码
+```
+
+然后：
+
+```bash
+./gradlew :app:assembleRelease
+apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk
+```
+
+四个键缺任意一个时，构建不会失败，而是产出 `app-release-unsigned.apk`——
+这样没有密钥的人也能完整构建本项目。
+
 ## 数据管线
 
 `app/src/main/assets/history/{月}-{日}.json` 共 366 个文件由脚本生成，**不要手工编辑**：
