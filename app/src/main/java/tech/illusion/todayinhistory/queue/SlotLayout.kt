@@ -51,7 +51,7 @@ object SlotLayout {
      * 偏航角与堆叠一致，两者才像在同一个平面上摆着。
      */
     val clockPose =
-        SlotPose(xFactor = 0.320f, yawDegrees = 0f, zFactor = 0.450f, yFactor = -0.380f, scale = 1f, alpha = 1.00f)
+        SlotPose(xFactor = 0.320f, yawDegrees = 0f, zFactor = 0.480f, yFactor = -0.380f, scale = 1f, alpha = 1.00f)
 
     /**
      * 槽位 0 是焦点卡，1..5 是待读条。
@@ -107,11 +107,11 @@ object SlotLayout {
     private val poses =
         listOf(
             SlotPose(xFactor = -0.150f, yawDegrees = StackYaw, zFactor = 0.4300f, yFactor = -0.360f, scale = 1f, alpha = 1.00f),
-            SlotPose(xFactor = -0.115f, yawDegrees = StackYaw, zFactor = 0.4175f, yFactor = -0.310f, scale = 1f, alpha = 0.92f),
-            SlotPose(xFactor = -0.080f, yawDegrees = StackYaw, zFactor = 0.4050f, yFactor = -0.260f, scale = 1f, alpha = 0.84f),
-            SlotPose(xFactor = -0.045f, yawDegrees = StackYaw, zFactor = 0.3925f, yFactor = -0.210f, scale = 1f, alpha = 0.76f),
-            SlotPose(xFactor = -0.010f, yawDegrees = StackYaw, zFactor = 0.3800f, yFactor = -0.160f, scale = 1f, alpha = 0.68f),
-            SlotPose(xFactor = 0.025f, yawDegrees = StackYaw, zFactor = 0.3675f, yFactor = -0.110f, scale = 1f, alpha = 0.60f),
+            SlotPose(xFactor = -0.115f, yawDegrees = StackYaw, zFactor = 0.3600f, yFactor = -0.310f, scale = 1f, alpha = 0.92f),
+            SlotPose(xFactor = -0.080f, yawDegrees = StackYaw, zFactor = 0.2900f, yFactor = -0.260f, scale = 1f, alpha = 0.84f),
+            SlotPose(xFactor = -0.045f, yawDegrees = StackYaw, zFactor = 0.2200f, yFactor = -0.210f, scale = 1f, alpha = 0.76f),
+            SlotPose(xFactor = -0.010f, yawDegrees = StackYaw, zFactor = 0.1500f, yFactor = -0.160f, scale = 1f, alpha = 0.68f),
+            SlotPose(xFactor = 0.025f, yawDegrees = StackYaw, zFactor = 0.0800f, yFactor = -0.110f, scale = 1f, alpha = 0.60f),
         )
 
     init {

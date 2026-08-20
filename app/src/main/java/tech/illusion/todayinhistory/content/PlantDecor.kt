@@ -22,9 +22,9 @@ private const val PLANT_ASSET = "asset://plant.usdz"
  * 时钟面板在 (0.320, -0.380, 0.450)。这里 z 取更小值把植物放到它**身后**
  * （SpatialView 坐标系 +Z 朝向观者，z 越小越远）。
  */
-private const val X_FACTOR = 0.320f
+private const val X_FACTOR = 0.30f
 private const val Y_FACTOR = -0.500f
-private const val Z_FACTOR = 0.150f
+private const val Z_FACTOR = 0.35f
 
 /**
  * 朝向（度）。绕的是**世界轴**，施加顺序为 roll(Z) → pitch(X) → yaw(Y)，
@@ -34,7 +34,7 @@ private const val Z_FACTOR = 0.150f
  * 卡片堆用的是同一个量（`SlotLayout` 里的 `StackYaw = 14f`），可以对照着取值。
  */
 private const val PITCH_DEGREES = 0f
-private const val YAW_DEGREES = 90f
+private const val YAW_DEGREES = 180f
 private const val ROLL_DEGREES = 0f
 
 /**
