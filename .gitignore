@@ -32,3 +32,6 @@ __pycache__/
 /app/release/
 *.apk
 *.aab
+
+# 内部上架笔记（不公开）
+docs/store/listing-zh.md

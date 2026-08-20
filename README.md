@@ -5,7 +5,7 @@
 基于 **PICO Spatial SDK 6.0** 的 Volume（Volumetric WindowContainer）空间应用，运行于 PICO OS 6。
 全部 366 天、54,018 条记录随安装包分发，**运行时不发起任何网络请求**。
 
-![截图](docs/store/screenshot-01-crop.png)
+![截图](docs/store/detail-01.png)
 
 ## 特性
 
@@ -15,6 +15,7 @@
 - **三类条目** —— 大事记 / 出生 / 逝世，用一个小色点区分
 - **时钟面板** —— 右下角常驻显示时间、日期与星期，跨零点自动切换到新的一天
 - **完全离线** —— 无网络权限，无数据采集，无内购
+- **场景摆件** —— 时钟旁的植物模型带 idle 骨骼动画，持续循环
 
 ## 数据来源与授权
 
@@ -83,6 +84,7 @@ python3 tools/build_icon_assets.py
 ```
 app/src/main/java/tech/illusion/todayinhistory/
 ├── content/HomeVolume.kt        Volume 内容装配，面板与实体的挂载点
+├── content/PlantDecor.kt       植物摆件：加载、按包围盒自动缩放、循环播放动画
 ├── data/                        资源读取与 JSON 解析（手写解析器，见下）
 ├── panels/                      SpatialUI 面板：卡片、时钟、年份标签
 └── queue/                       队列状态机、槽位姿态、ECS System 与驱动
@@ -107,8 +109,13 @@ app/src/main/java/tech/illusion/todayinhistory/
 `RealAssetIntegrityTest` 直接校验打包进 APK 的 366 个资源文件。
 测试任务已声明 `src/main/assets` 为输入，改数据会正确触发重跑，不会被 UP-TO-DATE 跳过。
 
+## 隐私
+
+本应用**不收集、不存储、不上传任何信息**，且没有网络权限，技术上无法联网。
+完整说明见 [隐私政策](docs/legal/privacy-policy.md)，其中每一条承诺都给出了自行核验的方法。
+
 ## 许可
 
 - **数据**：见上文「数据来源与授权」，遵循 CC BY-SA 4.0。
-- **代码**：尚未选定。未附许可文件的仓库默认为保留所有权利；
-  若要开放，建议 MIT 或 Apache-2.0，需仓库所有者确认后再添加 `LICENSE`。
+- **代码**：[MIT](LICENSE)。
+- 两者并行不冲突：MIT 覆盖本仓库源代码，CC BY-SA 4.0 覆盖随包分发的历史条目数据。
