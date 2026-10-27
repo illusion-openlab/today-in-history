@@ -29,5 +29,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "TodayInHistory"
 include(":app")
-include(":editor-asset")
  

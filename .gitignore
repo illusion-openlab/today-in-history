@@ -16,9 +16,6 @@ local.properties
 
 .superpowers/
 
-# 模块构建产物
-editor-asset/build/
-
 # Python
 __pycache__/
 
